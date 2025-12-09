@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "../lib/auth-context";
 
 type TabKey = "home" | "menu" | "cart" | "account" | "more";
 
@@ -25,6 +27,8 @@ const ROUTES: Partial<Record<TabKey, string>> = {
 
 export function BottomTabs({ activeKey = "home" }: BottomTabsProps) {
   const router = useRouter();
+  const { logout } = useAuth();
+  const [showMore, setShowMore] = useState(false);
 
   const handlePress = (key: TabKey) => {
     const href = ROUTES[key];
@@ -33,6 +37,22 @@ export function BottomTabs({ activeKey = "home" }: BottomTabsProps) {
     } else {
       console.log("Tab pressed", key);
     }
+  };
+
+  const handleMore = () => {
+    setShowMore(true);
+  };
+
+  const handleLogout = () => {
+    logout()
+      .then(() => {
+        setShowMore(false);
+        router.push("/login" as Href);
+      })
+      .catch((err) => {
+        setShowMore(false);
+        console.log("Logout failed", err);
+      });
   };
 
   return (
@@ -48,13 +68,34 @@ export function BottomTabs({ activeKey = "home" }: BottomTabsProps) {
               isActive && styles.activeTab,
               pressed && styles.pressed,
             ]}
-            onPress={() => handlePress(tab.key)}
+            onPress={() => (tab.key === "more" ? handleMore() : handlePress(tab.key))}
           >
             <Ionicons name={tab.icon} size={22} color={color} />
             <Text style={[styles.label, { color }]}>{tab.label}</Text>
           </Pressable>
         );
       })}
+
+      <Modal
+        transparent
+        visible={showMore}
+        animationType="fade"
+        onRequestClose={() => setShowMore(false)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setShowMore(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>More</Text>
+            <Pressable style={styles.sheetItem} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+              <Text style={styles.sheetItemDanger}>Log out</Text>
+            </Pressable>
+            <Pressable style={styles.sheetItem} onPress={() => setShowMore(false)}>
+              <Ionicons name="close" size={18} color="#111827" />
+              <Text style={styles.sheetItemText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -88,5 +129,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    gap: 10,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  sheetItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+  },
+  sheetItemText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  sheetItemDanger: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#EF4444",
   },
 });
