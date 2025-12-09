@@ -1,18 +1,38 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { AuthInput } from "./components/AuthInput";
 import { PrimaryButton } from "./components/PrimaryButton";
+import { useAuth } from "./lib/auth-context";
 
 export default function Login() {
+  const router = useRouter();
+  const { login, error, clearError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      return;
+    }
+    try {
+      setIsLoading(true);
+      clearError();
+      await login(email, password);
+      router.push("/home");
+    } catch (_err) {
+      // Error is handled in AuthContext and available via 'error'
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -44,11 +64,11 @@ export default function Login() {
               value={password}
               onChangeText={setPassword}
             />
+            {error && <Text style={styles.errorText}>{error}</Text>}
             <PrimaryButton
               title="Log In"
-              onPress={() => {
-                console.log("Login pressed", { email, password });
-              }}
+              onPress={handleLogin}
+              disabled={isLoading}
             />
           </View>
 
@@ -112,5 +132,11 @@ const styles = StyleSheet.create({
   link: {
     color: "#111827",
     fontWeight: "700",
+  },
+  errorText: {
+    color: "#DC2626",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
   },
 });

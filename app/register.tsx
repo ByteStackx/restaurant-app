@@ -1,19 +1,39 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { AuthInput } from "./components/AuthInput";
 import { PrimaryButton } from "./components/PrimaryButton";
+import { useAuth } from "./lib/auth-context";
 
 export default function Register() {
+  const router = useRouter();
+  const { signup, error, clearError } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRegister = async () => {
+    if (!email || !password || !name) {
+      return;
+    }
+    try {
+      setIsLoading(true);
+      clearError();
+      await signup(email, password);
+      router.push("/home");
+    } catch (_err) {
+      // Error is handled in AuthContext and available via 'error'
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -53,11 +73,11 @@ export default function Register() {
               value={password}
               onChangeText={setPassword}
             />
+            {error && <Text style={styles.errorText}>{error}</Text>}
             <PrimaryButton
               title="Create Account"
-              onPress={() => {
-                console.log("Register pressed", { name, email, password });
-              }}
+              onPress={handleRegister}
+              disabled={isLoading}
             />
           </View>
 
@@ -121,5 +141,11 @@ const styles = StyleSheet.create({
   link: {
     color: "#111827",
     fontWeight: "700",
+  },
+  errorText: {
+    color: "#DC2626",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
   },
 });
