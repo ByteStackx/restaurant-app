@@ -9,11 +9,26 @@ import React, { createContext, ReactNode, useContext, useEffect, useState } from
 import { auth } from "../services/firebase/firebase";
 import { createUserProfile } from "../services/firebase/user-service";
 
+type ProfileData = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  cardNumber: string;
+  cardExpiry: string;
+  cardCvv: string;
+  cardName: string;
+};
+
 type AuthContextType = {
   user: User | null;
   loading: boolean;
   error: string | null;
-  signup: (email: string, password: string, name?: string) => Promise<User>;
+  signup: (email: string, password: string, profileData: ProfileData) => Promise<User>;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -49,16 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const signup = async (email: string, password: string, name?: string) => {
+  const signup = async (email: string, password: string, profileData: ProfileData) => {
     try {
       setError(null);
       const result = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Create Firestore user profile
-      const { firstName, lastName } = parseNameParts(name || "");
+      // Create Firestore user profile with all details
       await createUserProfile(result.user.uid, {
-        firstName,
-        lastName,
+        ...profileData,
         email,
       });
       
