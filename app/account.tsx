@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AuthInput } from "./components/AuthInput";
@@ -9,7 +10,8 @@ import { useAuth } from "./lib/auth-context";
 import { getUserProfile, updateUserProfile } from "./services/firebase/user-service";
 
 export default function Account() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -88,6 +90,36 @@ export default function Account() {
   const handleCancel = () => {
     setIsEditing(false);
     // In real app, revert to previous state
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Log out",
+      "Are you sure you want to log out?",
+      [
+        {
+          text: "Cancel",
+          onPress: () => {},
+          style: "cancel",
+        },
+        {
+          text: "Log out",
+          onPress: async () => {
+            try {
+              console.log("Starting logout process...");
+              await logout();
+              console.log("Logout complete, navigating to login");
+              // Use replace to clear navigation stack and prevent back navigation
+              router.replace("/login");
+            } catch (error) {
+              console.error("Logout error:", error);
+              Alert.alert("Error", "Failed to log out. Please try again.");
+            }
+          },
+          style: "destructive",
+        },
+      ]
+    );
   };
 
   // Show sign-in prompt if not authenticated
@@ -311,7 +343,7 @@ export default function Account() {
                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
               </Pressable>
               <View style={styles.divider} />
-              <Pressable style={styles.actionRow}>
+              <Pressable style={styles.actionRow} onPress={handleLogout}>
                 <View style={styles.actionContent}>
                   <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                   <Text style={[styles.actionText, styles.actionTextDanger]}>Log out</Text>
