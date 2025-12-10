@@ -1,40 +1,113 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AuthInput } from "./components/AuthInput";
 import { BottomTabs } from "./components/BottomTabs";
 import { PrimaryButton } from "./components/PrimaryButton";
 import { TopNav } from "./components/TopNav";
+import { useAuth } from "./lib/auth-context";
+import { getUserProfile, updateUserProfile } from "./services/firebase/user-service";
 
 export default function Account() {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Mock user data - in a real app this would come from auth context/store
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [userData, setUserData] = useState({
-    firstName: "Ashley",
-    lastName: "Johnson",
-    email: "ashley.johnson@email.com",
-    phone: "+1 (555) 123-4567",
-    addressLine1: "123 Market Street",
-    addressLine2: "Apt 4B",
-    city: "San Francisco",
-    state: "CA",
-    zipCode: "94103",
-    cardNumber: "•••• •••• •••• 4242",
-    cardExpiry: "12/25",
-    cardCvv: "•••",
-    cardName: "Ashley Johnson",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    cardNumber: "",
+    cardExpiry: "",
+    cardCvv: "",
+    cardName: "",
   });
 
-  const handleSave = () => {
-    console.log("Saving user data:", userData);
-    setIsEditing(false);
+  useEffect(() => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchProfile = async () => {
+      try {
+        const profile = await getUserProfile(user.uid);
+        if (profile) {
+          setUserData({
+            firstName: profile.firstName || "",
+            lastName: profile.lastName || "",
+            email: profile.email || user.email || "",
+            phone: profile.phone || "",
+            addressLine1: profile.addressLine1 || "",
+            addressLine2: profile.addressLine2 || "",
+            city: profile.city || "",
+            state: profile.state || "",
+            zipCode: profile.zipCode || "",
+            cardNumber: profile.cardNumber || "",
+            cardExpiry: profile.cardExpiry || "",
+            cardCvv: profile.cardCvv || "",
+            cardName: profile.cardName || "",
+          });
+        } else {
+          // Fallback if no profile exists
+          setUserData((prev) => ({ ...prev, email: user.email || "" }));
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        Alert.alert("Error", "Failed to load profile data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      setIsSaving(true);
+      await updateUserProfile(user.uid, userData);
+      Alert.alert("Success", "Profile updated successfully");
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      Alert.alert("Error", "Failed to save profile changes");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     // In real app, revert to previous state
   };
+
+  // Show sign-in prompt if not authenticated
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.page}>
+          <TopNav />
+          <View style={styles.emptyState}>
+            <Ionicons name="person-circle-outline" size={80} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>Sign in to view your account</Text>
+            <Text style={styles.emptyText}>
+              Create an account or sign in to manage your profile, orders, and preferences.
+            </Text>
+          </View>
+        </View>
+        <BottomTabs activeKey="account" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -51,7 +124,9 @@ export default function Account() {
               <Ionicons name="person" size={40} color="#6B7280" />
             </View>
             <Text style={styles.profileName}>
-              {userData.firstName} {userData.lastName}
+              {userData.firstName || userData.lastName
+                ? `${userData.firstName} ${userData.lastName}`.trim()
+                : userData.email || "Account"}
             </Text>
             <Text style={styles.profileEmail}>{userData.email}</Text>
             {!isEditing && (
@@ -254,7 +329,7 @@ export default function Account() {
                 </Pressable>
               </View>
               <View style={styles.buttonHalf}>
-                <PrimaryButton title="Save changes" onPress={handleSave} />
+                <PrimaryButton title="Save changes" onPress={handleSave} disabled={isSaving} />
               </View>
             </View>
           )}
@@ -398,4 +473,42 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.4,
   },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+    gap: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#111827",
+    textAlign: "center",
+  },
+  emptyText: {
+    fontSize: 15,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 8,
+  },
 });
+
+function parseDisplayName(displayName?: string | null, email?: string | null) {
+  const fallback = email ? email.split("@")[0] : "";
+  const safeName = (displayName || "").trim() || fallback;
+  if (!safeName) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const parts = safeName.split(" ").filter(Boolean);
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "" };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}

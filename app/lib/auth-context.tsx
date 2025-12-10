@@ -1,22 +1,37 @@
 import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  User,
+    createUserWithEmailAndPassword,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
+    User,
 } from "firebase/auth";
 import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { auth } from "../services/firebase/firebase";
+import { createUserProfile } from "../services/firebase/user-service";
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
   error: string | null;
-  signup: (email: string, password: string) => Promise<User>;
+  signup: (email: string, password: string, name?: string) => Promise<User>;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   clearError: () => void;
 };
+
+function parseNameParts(fullName: string) {
+  const parts = fullName.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) {
+    return { firstName: "", lastName: "" };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "" };
+  }
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -34,10 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const signup = async (email: string, password: string) => {
+  const signup = async (email: string, password: string, name?: string) => {
     try {
       setError(null);
       const result = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Create Firestore user profile
+      const { firstName, lastName } = parseNameParts(name || "");
+      await createUserProfile(result.user.uid, {
+        firstName,
+        lastName,
+        email,
+      });
+      
       return result.user;
     } catch (err: any) {
       const errorMsg = err.message || "Failed to sign up";

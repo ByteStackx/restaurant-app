@@ -1,11 +1,11 @@
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import { AuthInput } from "./components/AuthInput";
 import { PrimaryButton } from "./components/PrimaryButton";
@@ -26,7 +26,7 @@ export default function Register() {
     try {
       setIsLoading(true);
       clearError();
-      await signup(email, password);
+      await signup(email, password, name);
       router.push("/home");
     } catch (_err) {
       // Error is handled in AuthContext and available via 'error'
