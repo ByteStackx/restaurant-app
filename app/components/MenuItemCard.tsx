@@ -8,6 +8,7 @@ export type MenuItemCardProps = {
   price: number;
   imageUrl?: string;
   onAddToCart?: (itemId: string) => void;
+  onPress?: (itemId: string) => void;
 };
 
 export function MenuItemCard({
@@ -17,9 +18,13 @@ export function MenuItemCard({
   price,
   imageUrl,
   onAddToCart,
+  onPress,
 }: MenuItemCardProps) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      onPress={() => onPress?.(id)}
+    >
       {/* Image Left */}
       <View style={styles.imageContainer}>
         {imageUrl ? (
@@ -58,7 +63,7 @@ export function MenuItemCard({
           <Text style={styles.buttonText}>Add</Text>
         </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -72,6 +77,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginHorizontal: 20,
     marginVertical: 10,
+  },
+  cardPressed: {
+    opacity: 0.9,
   },
   imageContainer: {
     width: "45%",

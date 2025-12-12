@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { NativeScrollEvent, NativeSyntheticEvent, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BottomTabs } from "./components/BottomTabs";
@@ -121,6 +122,7 @@ const MENU_DATA: Record<FoodCategory, { items: MenuItemCardProps[]; title: strin
 };
 
 export default function Menu() {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<FoodCategory>("starters");
   const sectionRefs = useRef<Record<FoodCategory, number>>({
     starters: 0,
@@ -135,6 +137,10 @@ export default function Menu() {
 
   const handleAddToCart = (itemId: string) => {
     console.log("Added to cart:", itemId);
+  };
+
+  const handleItemPress = (itemId: string) => {
+    router.push({ pathname: "/menu-item", params: { id: itemId } });
   };
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -201,6 +207,7 @@ export default function Menu() {
                     key={item.id}
                     {...item}
                     onAddToCart={handleAddToCart}
+                    onPress={handleItemPress}
                   />
                 ))}
               </View>
