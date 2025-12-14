@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Accordion } from "./components/Accordion";
@@ -50,6 +50,7 @@ const createIngredientOptions = (items: string[] | undefined): OptionWithDescrip
 
 export default function MenuItemDetail() {
   const params = useLocalSearchParams();
+  const router = useRouter();
   const itemId = params.id as string;
   const { addItem } = useCart();
   
@@ -57,6 +58,7 @@ export default function MenuItemDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidesError, setSidesError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
   const [selectedDrink, setSelectedDrink] = useState<string>("");
@@ -161,6 +163,14 @@ export default function MenuItemDetail() {
       ingredients: selectedIngredients.map((iid) => ingredientOptions.find((i) => i.id === iid)?.label || iid),
       addOnTotal,
     });
+
+    // Show success message
+    setSuccessMessage(`${item.name} added to cart!`);
+    
+    // Navigate back to menu after a short delay
+    setTimeout(() => {
+      router.push("/menu");
+    }, 1500);
   };
 
   if (loading) {
@@ -195,6 +205,12 @@ export default function MenuItemDetail() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.page}>
         <TopNav />
+        {successMessage && (
+          <View style={styles.successBanner}>
+            <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+            <Text style={styles.successText}>{successMessage}</Text>
+          </View>
+        )}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
@@ -381,6 +397,19 @@ const styles = StyleSheet.create({
   },
   page: {
     flex: 1,
+  },
+  successBanner: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  successText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
   centerContainer: {
     flex: 1,
