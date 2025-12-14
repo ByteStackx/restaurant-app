@@ -1,129 +1,66 @@
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
-import { NativeScrollEvent, NativeSyntheticEvent, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, NativeScrollEvent, NativeSyntheticEvent, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BottomTabs } from "./components/BottomTabs";
 import { FoodTypeSlider } from "./components/FoodTypeSlider";
 import { MenuItemCard, MenuItemCardProps } from "./components/MenuItemCard";
 import { TopNav } from "./components/TopNav";
+import { listMenuItems, MenuItem } from "./services/firebase/admin-service";
 
 type FoodCategory = "starters" | "salads" | "mains" | "sides" | "desserts" | "drinks";
 
 const CATEGORY_ORDER: FoodCategory[] = ["starters", "salads", "mains", "sides", "desserts", "drinks"];
 
-const MENU_DATA: Record<FoodCategory, { items: MenuItemCardProps[]; title: string }> = {
-  starters: {
-    title: "Starters",
-    items: [
-      {
-        id: "1",
-        name: "Crispy Spring Rolls",
-        description: "Golden fried rolls with fresh herbs and sweet chili sauce.",
-        price: 8.99,
-      },
-      {
-        id: "2",
-        name: "Garlic Bread",
-        description: "Toasted with butter and fresh parmesan.",
-        price: 6.99,
-      },
-    ],
-  },
-  salads: {
-    title: "Salads",
-    items: [
-      {
-        id: "3",
-        name: "Caesar Salad",
-        description: "Crisp romaine, parmesan, croutons, and creamy Caesar dressing.",
-        price: 12.99,
-      },
-      {
-        id: "4",
-        name: "Caprese Salad",
-        description: "Tomato, mozzarella, basil, and balsamic glaze.",
-        price: 11.99,
-      },
-    ],
-  },
-  mains: {
-    title: "Mains",
-    items: [
-      {
-        id: "5",
-        name: "Grilled Salmon",
-        description: "Fresh salmon fillet with lemon butter sauce and roasted vegetables.",
-        price: 24.99,
-      },
-      {
-        id: "6",
-        name: "Ribeye Steak",
-        description: "Prime cut steak with garlic mashed potatoes and asparagus.",
-        price: 28.99,
-      },
-      {
-        id: "7",
-        name: "Pasta Carbonara",
-        description: "Classic Italian pasta with pancetta, egg, and pecorino cheese.",
-        price: 16.99,
-      },
-    ],
-  },
-  sides: {
-    title: "Sides",
-    items: [
-      {
-        id: "8",
-        name: "Fries",
-        description: "Crispy golden fries with sea salt.",
-        price: 5.99,
-      },
-      {
-        id: "9",
-        name: "Roasted Vegetables",
-        description: "Seasonal vegetables with olive oil and herbs.",
-        price: 7.99,
-      },
-    ],
-  },
-  desserts: {
-    title: "Desserts",
-    items: [
-      {
-        id: "10",
-        name: "Chocolate Lava Cake",
-        description: "Warm chocolate cake with molten center and vanilla ice cream.",
-        price: 9.99,
-      },
-      {
-        id: "11",
-        name: "Tiramisu",
-        description: "Classic Italian dessert with espresso and mascarpone.",
-        price: 8.99,
-      },
-    ],
-  },
-  drinks: {
-    title: "Drinks",
-    items: [
-      {
-        id: "12",
-        name: "Fresh Orange Juice",
-        description: "Freshly squeezed orange juice.",
-        price: 4.99,
-      },
-      {
-        id: "13",
-        name: "Iced Tea",
-        description: "Refreshing iced tea with lemon.",
-        price: 3.99,
-      },
-    ],
-  },
+const CATEGORY_TITLES: Record<FoodCategory, string> = {
+  starters: "Starters",
+  salads: "Salads",
+  mains: "Mains",
+  sides: "Sides",
+  desserts: "Desserts",
+  drinks: "Drinks",
+};
+
+const createEmptyMenuData = (): Record<
+  FoodCategory,
+  { items: MenuItemCardProps[]; title: string }
+> => ({
+  starters: { title: CATEGORY_TITLES.starters, items: [] },
+  salads: { title: CATEGORY_TITLES.salads, items: [] },
+  mains: { title: CATEGORY_TITLES.mains, items: [] },
+  sides: { title: CATEGORY_TITLES.sides, items: [] },
+  desserts: { title: CATEGORY_TITLES.desserts, items: [] },
+  drinks: { title: CATEGORY_TITLES.drinks, items: [] },
+});
+
+const organizeMenuItemsByCategory = (
+  items: MenuItem[]
+): Record<FoodCategory, { items: MenuItemCardProps[]; title: string }> => {
+  const organized = createEmptyMenuData();
+
+  items.forEach((item) => {
+    const category = item.foodType as FoodCategory;
+    if (category && organized[category] && item.id) {
+      organized[category].items.push({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        imageUrl: item.imageUrl,
+      });
+    }
+  });
+
+  return organized;
 };
 
 export default function Menu() {
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<FoodCategory>("starters");
+  const [menuData, setMenuData] = useState<Record<FoodCategory, { items: MenuItemCardProps[]; title: string }>>(
+    createEmptyMenuData()
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const sectionRefs = useRef<Record<FoodCategory, number>>({
     starters: 0,
     salads: 0,
@@ -134,6 +71,25 @@ export default function Menu() {
   });
   const scrollViewRef = useRef<ScrollView>(null);
   const isScrollingToSection = useRef(false);
+
+  useEffect(() => {
+    const loadMenuItems = async () => {
+      try {
+        setLoading(true);
+        const items = await listMenuItems();
+        const organized = organizeMenuItemsByCategory(items);
+        setMenuData(organized);
+        setError(null);
+      } catch (err) {
+        console.error("Error loading menu items:", err);
+        setError("Failed to load menu items");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMenuItems();
+  }, []);
 
   const handleAddToCart = (itemId: string) => {
     console.log("Added to cart:", itemId);
@@ -175,6 +131,19 @@ export default function Menu() {
     }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.page}>
+          <TopNav />
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#DC2626" />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.page}>
@@ -191,8 +160,13 @@ export default function Menu() {
           onScroll={handleScroll}
           scrollEventThrottle={16}
         >
-          {CATEGORY_ORDER.map((category, index) => {
-            const { title, items } = MENU_DATA[category];
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+          {CATEGORY_ORDER.map((category) => {
+            const { title, items } = menuData[category];
             return (
               <View
                 key={category}
@@ -202,14 +176,18 @@ export default function Menu() {
                 }}
               >
                 <Text style={styles.sectionHeader}>{title}</Text>
-                {items.map((item) => (
-                  <MenuItemCard
-                    key={item.id}
-                    {...item}
-                    onAddToCart={handleAddToCart}
-                    onPress={handleItemPress}
-                  />
-                ))}
+                {items.length === 0 ? (
+                  <Text style={styles.emptyText}>No items available</Text>
+                ) : (
+                  items.map((item) => (
+                    <MenuItemCard
+                      key={item.id}
+                      {...item}
+                      onAddToCart={handleAddToCart}
+                      onPress={handleItemPress}
+                    />
+                  ))
+                )}
               </View>
             );
           })}
@@ -228,6 +206,11 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
   },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   scroll: {
     flex: 1,
   },
@@ -245,5 +228,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 12,
     fontStyle: "italic",
+  },
+  errorContainer: {
+    backgroundColor: "#FEE2E2",
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: "#DC2626",
+  },
+  errorText: {
+    color: "#991B1B",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  emptyText: {
+    color: "#6B7280",
+    fontSize: 14,
+    fontStyle: "italic",
+    marginHorizontal: 20,
+    marginBottom: 12,
   },
 });
