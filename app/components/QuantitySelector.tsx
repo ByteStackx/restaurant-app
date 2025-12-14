@@ -70,13 +70,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#111827",
+    backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
   },
   pressed: {
-    backgroundColor: "#374151",
+    opacity: 0.7,
   },
   disabled: {
     opacity: 0.5,
