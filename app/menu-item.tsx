@@ -56,6 +56,7 @@ export default function MenuItemDetail() {
   const [item, setItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sidesError, setSidesError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
   const [selectedDrink, setSelectedDrink] = useState<string>("");
@@ -119,6 +120,16 @@ export default function MenuItemDetail() {
 
   const handleAddToCart = () => {
     if (!item) return;
+
+    // Check if sides are required and validate
+    if (item.sides && item.sides.length > 0 && selectedSides.length === 0) {
+      setSidesError("Please select at least one side to continue");
+      return;
+    }
+
+    // Clear error if validation passes
+    setSidesError(null);
+
     // compute add-on total based on selected drink/extras
     let addOnTotal = 0;
     // build option arrays once for label lookups
@@ -281,6 +292,9 @@ export default function MenuItemDetail() {
                     onSelect={setSelectedSides}
                     maxSelections={2}
                   />
+                  {sidesError && (
+                    <Text style={styles.errorMessage}>{sidesError}</Text>
+                  )}
                 </Accordion>
               )}
 
@@ -493,6 +507,12 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginBottom: 8,
     fontStyle: "italic",
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: "#DC2626",
+    fontWeight: "700",
+    marginTop: 8,
   },
   quantitySection: {
     gap: 10,
