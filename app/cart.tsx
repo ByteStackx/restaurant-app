@@ -7,33 +7,9 @@ import { CheckboxGroup } from "./components/CheckboxGroup";
 import { PrimaryButton } from "./components/PrimaryButton";
 import { QuantitySelector } from "./components/QuantitySelector";
 import { TopNav } from "./components/TopNav";
+import { useCart } from "./lib/cart-context";
 
-type CartItem = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  quantity: number;
-  addons?: string[];
-};
-
-const INITIAL_ITEMS: CartItem[] = [
-  {
-    id: "5",
-    name: "Grilled Salmon",
-    description: "Roasted veggies, garlic mash, lemon butter",
-    price: 24.99,
-    quantity: 1,
-    addons: ["No lemon", "Extra herbs"],
-  },
-  {
-    id: "8",
-    name: "Fries",
-    description: "Sea salt, crispy, double portion",
-    price: 5.99,
-    quantity: 2,
-  },
-];
+// Cart items now come from CartContext
 
 const EXTRAS_OPTIONS = [
   { id: "extra-salmon", label: "Extra Salmon", price: 8.99 },
@@ -48,17 +24,14 @@ const EXTRAS_OPTIONS = [
 
 export default function Cart() {
   const router = useRouter();
-  const [items, setItems] = useState<CartItem[]>(INITIAL_ITEMS);
+  const { items, updateItemQuantity, clear, total: cartSubtotal } = useCart();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [tempAddons, setTempAddons] = useState<string[]>([]);
 
   const isEmpty = items.length === 0;
 
   const updateQuantity = (itemId: string, nextQuantity: number) => {
-    setItems((prev) => {
-      const updated = prev.map((item) => (item.id === itemId ? { ...item, quantity: nextQuantity } : item));
-      return updated.filter((item) => item.quantity >= 1);
-    });
+    updateItemQuantity(itemId, nextQuantity);
   };
 
   const updateAddons = (itemId: string, newAddons: string[]) => {
@@ -66,7 +39,7 @@ export default function Cart() {
   };
 
   const clearCart = () => {
-    setItems([]);
+    clear();
   };
 
   const openEditModal = (itemId: string) => {
@@ -90,13 +63,13 @@ export default function Cart() {
   };
 
   const totals = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = cartSubtotal;
     const deliveryFee = items.length > 0 ? 4.99 : 0;
     const taxes = subtotal * 0.08;
-    const total = subtotal + deliveryFee + taxes;
+    const grandTotal = subtotal + deliveryFee + taxes;
 
-    return { subtotal, deliveryFee, taxes, total };
-  }, [items]);
+    return { subtotal, deliveryFee, taxes, total: grandTotal };
+  }, [items, cartSubtotal]);
 
   const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
@@ -152,7 +125,8 @@ export default function Cart() {
                 </View>
                 <View style={styles.card}>
                   {items.map((item, index) => {
-                    const lineTotal = item.price * item.quantity;
+                    const unitWithAddons = item.price + (item.addOnTotal || 0);
+                    const lineTotal = unitWithAddons * item.quantity;
                     return (
                       <View
                         key={item.id}
@@ -169,12 +143,20 @@ export default function Cart() {
                             <Text style={styles.editText}>Edit</Text>
                           </Pressable>
                         </View>
-                        {item.addons && item.addons.length > 0 ? (
+                        {/* Show selected sides/drink/extras/ingredients if present */}
+                        {(item.sides && item.sides.length > 0) || item.drink || (item.extras && item.extras.length > 0) || (item.ingredients && item.ingredients.length > 0) ? (
                           <View style={styles.addonRow}>
-                            {item.addons.map((addon) => (
-                              <Text key={addon} style={styles.addonTag}>
-                                {addon}
-                              </Text>
+                            {item.sides?.map((s) => (
+                              <Text key={`side-${s}`} style={styles.addonTag}>{s}</Text>
+                            ))}
+                            {item.drink ? (
+                              <Text key={`drink-${item.drink}`} style={styles.addonTag}>{item.drink}</Text>
+                            ) : null}
+                            {item.extras?.map((e) => (
+                              <Text key={`extra-${e}`} style={styles.addonTag}>{e}</Text>
+                            ))}
+                            {item.ingredients?.map((ing) => (
+                              <Text key={`ing-${ing}`} style={styles.addonTag}>{ing}</Text>
                             ))}
                           </View>
                         ) : null}
@@ -185,7 +167,7 @@ export default function Cart() {
                             min={0}
                             max={10}
                           />
-                          <Text style={styles.unitPrice}>{formatCurrency(item.price)} each</Text>
+                          <Text style={styles.unitPrice}>{formatCurrency(unitWithAddons)} each</Text>
                         </View>
                       </View>
                     );

@@ -3,6 +3,7 @@ import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../lib/auth-context";
+import { useCart } from "../lib/cart-context";
 
 type TabKey = "home" | "menu" | "cart" | "account" | "more";
 
@@ -29,6 +30,7 @@ export function BottomTabs({ activeKey = "home" }: BottomTabsProps) {
   const router = useRouter();
   const { logout } = useAuth();
   const [showMore, setShowMore] = useState(false);
+  const { count } = useCart();
 
   const handlePress = (key: TabKey) => {
     const href = ROUTES[key];
@@ -70,7 +72,14 @@ export function BottomTabs({ activeKey = "home" }: BottomTabsProps) {
             ]}
             onPress={() => (tab.key === "more" ? handleMore() : handlePress(tab.key))}
           >
-            <Ionicons name={tab.icon} size={22} color={color} />
+            <View style={{ position: "relative" }}>
+              <Ionicons name={tab.icon} size={22} color={color} />
+              {tab.key === "cart" && count > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{count}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.label, { color }]}>{tab.label}</Text>
           </Pressable>
         );
@@ -129,6 +138,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    backgroundColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
   },
   backdrop: {
     flex: 1,

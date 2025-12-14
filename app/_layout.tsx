@@ -1,9 +1,11 @@
 import { Stack } from "expo-router";
 import { AuthProvider } from "./lib/auth-context";
+import { CartProvider } from "./lib/cart-context";
 
 export default function RootLayout() {
   return (
     <AuthProvider>
+      <CartProvider>
       <Stack
         screenOptions={{
           headerTitleAlign: "center",
@@ -20,6 +22,7 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ title: "Log In" }} />
         <Stack.Screen name="register" options={{ title: "Create Account" }} />
       </Stack>
+      </CartProvider>
     </AuthProvider>
   );
 }

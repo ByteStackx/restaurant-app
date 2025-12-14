@@ -9,6 +9,7 @@ import { PrimaryButton } from "./components/PrimaryButton";
 import { QuantitySelector } from "./components/QuantitySelector";
 import { RadioGroup } from "./components/RadioGroup";
 import { TopNav } from "./components/TopNav";
+import { useCart } from "./lib/cart-context";
 import { getMenuItem, MenuItem } from "./services/firebase/admin-service";
 
 type OptionWithPrice = { id: string; label: string; price?: number };
@@ -50,6 +51,7 @@ const createIngredientOptions = (items: string[] | undefined): OptionWithDescrip
 export default function MenuItemDetail() {
   const params = useLocalSearchParams();
   const itemId = params.id as string;
+  const { addItem } = useCart();
   
   const [item, setItem] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,16 +119,37 @@ export default function MenuItemDetail() {
 
   const handleAddToCart = () => {
     if (!item) return;
-    const orderSummary = {
-      itemId: item.id,
+    // compute add-on total based on selected drink/extras
+    let addOnTotal = 0;
+    // build option arrays once for label lookups
+    const drinkOptions = item.drinks ? createOptionsFromArray(item.drinks) : [];
+    const extraOptions = item.extras ? createOptionsFromArray(item.extras) : [];
+    const sideOptions = item.sides ? createOptionsFromArray(item.sides) : [];
+    const ingredientOptions = item.customIngredients ? createIngredientOptions(item.customIngredients) : [];
+    if (selectedDrink && item.drinks) {
+      const selectedDrinkOption = drinkOptions.find((d) => d.id === selectedDrink);
+      if (selectedDrinkOption?.price) addOnTotal += selectedDrinkOption.price;
+    }
+    if (selectedExtras.length > 0 && item.extras) {
+      selectedExtras.forEach((extraId) => {
+        const extra = extraOptions.find((e) => e.id === extraId);
+        if (extra?.price) addOnTotal += extra.price;
+      });
+    }
+
+    addItem({
+      id: item.id!,
+      name: item.name,
+      price: item.price,
       quantity,
-      sides: selectedSides.length > 0 ? selectedSides : "None",
-      drink: selectedDrink || "None",
-      extras: selectedExtras.length > 0 ? selectedExtras : "None",
-      ingredients: selectedIngredients.length > 0 ? selectedIngredients : "None",
-      totalPrice: calculateTotal(),
-    };
-    console.log("Added to cart:", orderSummary);
+      imageUrl: item.imageUrl,
+      // store human-readable labels instead of internal option ids
+      sides: selectedSides.map((sid) => sideOptions.find((s) => s.id === sid)?.label || sid),
+      drink: selectedDrink ? (drinkOptions.find((d) => d.id === selectedDrink)?.label || selectedDrink) : undefined,
+      extras: selectedExtras.map((eid) => extraOptions.find((e) => e.id === eid)?.label || eid),
+      ingredients: selectedIngredients.map((iid) => ingredientOptions.find((i) => i.id === iid)?.label || iid),
+      addOnTotal,
+    });
   };
 
   if (loading) {
