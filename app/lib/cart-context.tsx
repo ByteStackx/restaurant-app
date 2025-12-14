@@ -20,6 +20,7 @@ export type CartContextValue = {
   addItem: (item: CartItem) => void;
   removeItem: (id: string, index?: number) => void;
   updateItemQuantity: (id: string, quantity: number, index?: number) => void;
+  updateItemAtIndex: (index: number, updates: Partial<CartItem>) => void;
   clear: () => void;
   count: number;
   total: number;
@@ -64,10 +65,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const updateItemAtIndex = (index: number, updates: Partial<CartItem>) => {
+    setItems((prev) => {
+      const next = [...prev];
+      if (index >= 0 && index < next.length) {
+        next[index] = { ...next[index], ...updates };
+      }
+      return next;
+    });
+  };
+
   const count = items.length;
   const total = useMemo(() => items.reduce((sum, i) => sum + (i.price + (i.addOnTotal || 0)) * i.quantity, 0), [items]);
 
-  const value: CartContextValue = { items, addItem, removeItem, updateItemQuantity, clear, count, total };
+  const value: CartContextValue = { items, addItem, removeItem, updateItemQuantity, updateItemAtIndex, clear, count, total };
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
