@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+const CART_STORAGE_KEY = "@restaurant_cart";
 
 export type CartItem = {
   id: string;
@@ -30,6 +33,33 @@ const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Restore cart from AsyncStorage on mount
+  useEffect(() => {
+    const restoreCart = async () => {
+      try {
+        const savedCart = await AsyncStorage.getItem(CART_STORAGE_KEY);
+        if (savedCart) {
+          setItems(JSON.parse(savedCart));
+        }
+      } catch (error) {
+        console.error("Failed to restore cart:", error);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    restoreCart();
+  }, []);
+
+  // Save cart to AsyncStorage whenever it changes
+  useEffect(() => {
+    if (isLoaded) {
+      AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items)).catch((error) =>
+        console.error("Failed to save cart:", error)
+      );
+    }
+  }, [items, isLoaded]);
 
   const addItem = (item: CartItem) => {
     setItems((prev) => [...prev, item]);
@@ -47,7 +77,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const clear = () => setItems([]);
+  const clear = () => {
+    setItems([]);
+    AsyncStorage.removeItem(CART_STORAGE_KEY).catch((error) =>
+      console.error("Failed to clear cart storage:", error)
+    );
+  };
 
   const updateItemQuantity = (id: string, quantity: number, index?: number) => {
     setItems((prev) => {
