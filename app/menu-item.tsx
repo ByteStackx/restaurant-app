@@ -296,22 +296,24 @@ export default function MenuItemDetail() {
             <View style={styles.customizationSection}>
               {/* Sides */}
               {item.sides && item.sides.length > 0 && (
-                <Accordion
-                  title="Choose Your Sides"
-                  icon="checkmark-circle-outline"
-                  defaultOpen={false}
-                >
-                  <Text style={styles.accordionHelper}>Select up to 2 sides (included in price)</Text>
-                  <CheckboxGroup
-                    options={createOptionsFromArray(item.sides)}
-                    selected={selectedSides}
-                    onSelect={setSelectedSides}
-                    maxSelections={2}
-                  />
+                <>
+                  <Accordion
+                    title="Choose Your Sides"
+                    icon="checkmark-circle-outline"
+                    defaultOpen={false}
+                  >
+                    <Text style={styles.accordionHelper}>Select up to 2 sides (included in price)</Text>
+                    <CheckboxGroup
+                      options={createOptionsFromArray(item.sides)}
+                      selected={selectedSides}
+                      onSelect={setSelectedSides}
+                      maxSelections={2}
+                    />
+                  </Accordion>
                   {sidesError && (
                     <Text style={styles.errorMessage}>{sidesError}</Text>
                   )}
-                </Accordion>
+                </>
               )}
 
               {/* Drinks */}
