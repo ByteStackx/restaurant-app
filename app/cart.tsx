@@ -184,25 +184,6 @@ export default function Cart() {
           ) : (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Delivery address</Text>
-                <View style={styles.card}>
-                  <View style={styles.addressRow}>
-                    <View style={styles.addressIcon}>
-                      <Ionicons name="location-outline" size={22} color="#111827" />
-                    </View>
-                    <View style={styles.addressText}>
-                      <Text style={styles.addressTitle}>123 Market Street</Text>
-                      <Text style={styles.addressMeta}>San Francisco, CA 94103</Text>
-                      <Text style={styles.addressMeta}>Delivery · Today · 45-55 min</Text>
-                    </View>
-                    <Pressable style={styles.changeButton} onPress={() => console.log("Change address")}>
-                      <Text style={styles.changeButtonText}>Change</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionLabel}>Order summary</Text>
                   <Pressable onPress={clearCart}>
@@ -445,44 +426,6 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     padding: 16,
     gap: 12,
-  },
-  addressRow: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "flex-start",
-  },
-  addressIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addressText: {
-    flex: 1,
-    gap: 4,
-  },
-  addressTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#111827",
-  },
-  addressMeta: {
-    fontSize: 13,
-    color: "#6B7280",
-  },
-  changeButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: "#111827",
-  },
-  changeButtonText: {
-    color: "#F9FAFB",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.2,
   },
   itemRow: {
     gap: 8,
