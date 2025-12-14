@@ -4,7 +4,7 @@ type RadioOption = {
   id: string;
   label: string;
   description?: string;
-  priceModifier?: number;
+  price?: number;
 };
 
 type RadioGroupProps = {
@@ -38,8 +38,8 @@ export function RadioGroup({ options, selected, onSelect }: RadioGroupProps) {
                 <Text style={styles.description}>{option.description}</Text>
               )}
             </View>
-            {option.priceModifier !== undefined && option.priceModifier > 0 && (
-              <Text style={styles.price}>+${option.priceModifier.toFixed(2)}</Text>
+            {option.price !== undefined && option.price > 0 && (
+              <Text style={styles.price}>+${option.price.toFixed(2)}</Text>
             )}
           </Pressable>
         );

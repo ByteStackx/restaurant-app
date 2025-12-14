@@ -60,6 +60,13 @@ export async function listMenuItems(): Promise<MenuItem[]> {
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as MenuItem) }));
 }
 
+export async function getMenuItem(id: string): Promise<MenuItem | null> {
+  const ref = doc(db, "menuItems", id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...(snap.data() as MenuItem) };
+}
+
 export async function createMenuItem(data: MenuItem): Promise<string> {
   const payload = { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
   const docRef = await addDoc(collection(db, "menuItems"), payload);

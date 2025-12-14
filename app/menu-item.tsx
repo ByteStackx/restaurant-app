@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Accordion } from "./components/Accordion";
 import { BottomTabs } from "./components/BottomTabs";
 import { CheckboxGroup } from "./components/CheckboxGroup";
@@ -8,79 +9,114 @@ import { PrimaryButton } from "./components/PrimaryButton";
 import { QuantitySelector } from "./components/QuantitySelector";
 import { RadioGroup } from "./components/RadioGroup";
 import { TopNav } from "./components/TopNav";
+import { getMenuItem, MenuItem } from "./services/firebase/admin-service";
 
-const SIDE_OPTIONS = [
-  { id: "fries", label: "Fries" },
-  { id: "salad", label: "Garden Salad" },
-  { id: "coleslaw", label: "Coleslaw" },
-  { id: "veggies", label: "Roasted Vegetables" },
-];
+type OptionWithPrice = { id: string; label: string; price?: number };
+type OptionWithDescription = { id: string; label: string; description?: string };
 
-const DRINK_OPTIONS = [
-  { id: "water", label: "Water", price: 0 },
-  { id: "coke", label: "Coca-Cola", price: 0 },
-  { id: "sprite", label: "Sprite", price: 0 },
-  { id: "juice", label: "Fresh Juice", price: 2.99 },
-];
+// Helper function to parse price from parentheses format: "Item Name(2.99)" -> { name: "Item Name", price: 2.99 }
+const parseItemWithPrice = (item: string): { name: string; price: number } => {
+  const match = item.match(/^(.+?)\(([0-9.]+)\)$/);
+  if (match) {
+    return {
+      name: match[1].trim(),
+      price: parseFloat(match[2]),
+    };
+  }
+  return { name: item.trim(), price: 0 };
+};
 
-const EXTRAS_OPTIONS = [
-  { id: "extra-salmon", label: "Extra Salmon", price: 8.99 },
-  { id: "extra-butter", label: "Extra Herb Butter", price: 1.99 },
-  { id: "extra-lemon", label: "Lemon Wedges", price: 0.99 },
-  { id: "sauce-hollandaise", label: "Hollandaise Sauce", price: 2.49 },
-];
+// Helper functions to convert string arrays to option formats
+const createOptionsFromArray = (items: string[] | undefined): OptionWithPrice[] => {
+  if (!items || items.length === 0) return [];
+  return items.map((item, index) => {
+    const { name, price } = parseItemWithPrice(item);
+    return {
+      id: `option-${index}`,
+      label: name,
+      price,
+    };
+  });
+};
 
-const INGREDIENTS_OPTIONS = [
-  { id: "no-lemon", label: "No Lemon", description: "Remove lemon zest" },
-  { id: "extra-herbs", label: "Extra Herbs", description: "Double the herb seasoning" },
-  { id: "no-butter", label: "No Butter", description: "Prepare dry" },
-  { id: "well-done", label: "Well Done", description: "Cook longer for crispier exterior" },
-];
+const createIngredientOptions = (items: string[] | undefined): OptionWithDescription[] => {
+  if (!items || items.length === 0) return [];
+  return items.map((item, index) => ({
+    id: `ingredient-${index}`,
+    label: item,
+  }));
+};
 
 export default function MenuItemDetail() {
+  const params = useLocalSearchParams();
+  const itemId = params.id as string;
+  
+  const [item, setItem] = useState<MenuItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
   const [selectedDrink, setSelectedDrink] = useState<string>("");
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
 
-  // Mock item data - in a real app, this would come from route params
-  const item = {
-    id: "5",
-    name: "Grilled Salmon",
-    price: 24.99,
-    description: "Fresh Atlantic salmon fillet with a perfect sear, served with herb butter.",
-    longDescription:
-      "Our signature grilled salmon is sourced fresh daily and prepared to perfection. The delicate fish is seasoned with a blend of Mediterranean herbs and finished with a touch of lemon zest. Served with roasted seasonal vegetables and creamy mashed potatoes.",
-    imageUrl: undefined, // Placeholder
-    allergens: ["Fish", "Shellfish", "Tree nuts"],
-    nutritionInfo: {
-      calories: 450,
-      protein: 38,
-      carbs: 12,
-      fat: 22,
-    },
-  };
+  useEffect(() => {
+    const loadMenuItem = async () => {
+      if (!itemId) {
+        setError("No item ID provided");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const menuItem = await getMenuItem(itemId);
+        if (menuItem) {
+          setItem(menuItem);
+          setError(null);
+        } else {
+          setError("Menu item not found");
+        }
+      } catch (err) {
+        console.error("Error loading menu item:", err);
+        setError("Failed to load menu item");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMenuItem();
+  }, [itemId]);
 
   const calculateTotal = () => {
+    if (!item) return 0;
     let total = item.price;
 
-    // Add extras price
-    selectedExtras.forEach((extraId) => {
-      const extra = EXTRAS_OPTIONS.find((e) => e.id === extraId);
-      if (extra) total += extra.price;
-    });
+    // Add drink price if selected
+    if (selectedDrink && item.drinks) {
+      const drinkOptions = createOptionsFromArray(item.drinks);
+      const selectedDrinkOption = drinkOptions.find((d) => d.id === selectedDrink);
+      if (selectedDrinkOption && selectedDrinkOption.price) {
+        total += selectedDrinkOption.price;
+      }
+    }
 
-    // Add drink price if applicable
-    if (selectedDrink) {
-      const drink = DRINK_OPTIONS.find((d) => d.id === selectedDrink);
-      if (drink && drink.price > 0) total += drink.price;
+    // Add extras prices
+    if (selectedExtras.length > 0 && item.extras) {
+      const extraOptions = createOptionsFromArray(item.extras);
+      selectedExtras.forEach((extraId) => {
+        const extra = extraOptions.find((e) => e.id === extraId);
+        if (extra && extra.price) {
+          total += extra.price;
+        }
+      });
     }
 
     return total * quantity;
   };
 
   const handleAddToCart = () => {
+    if (!item) return;
     const orderSummary = {
       itemId: item.id,
       quantity,
@@ -92,6 +128,34 @@ export default function MenuItemDetail() {
     };
     console.log("Added to cart:", orderSummary);
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.page}>
+          <TopNav />
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#DC2626" />
+          </View>
+        </View>
+        <BottomTabs activeKey="menu" />
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !item) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.page}>
+          <TopNav />
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>{error || "Item not found"}</Text>
+          </View>
+        </View>
+        <BottomTabs activeKey="menu" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -127,101 +191,123 @@ export default function MenuItemDetail() {
 
             {/* Description */}
             <Text style={styles.description}>{item.description}</Text>
-            <Text style={styles.longDescription}>{item.longDescription}</Text>
+            {item.longDescription && (
+              <Text style={styles.longDescription}>{item.longDescription}</Text>
+            )}
 
             {/* Nutrition */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Nutrition (per serving)</Text>
-              <View style={styles.nutritionGrid}>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Calories</Text>
-                  <Text style={styles.nutritionValue}>{item.nutritionInfo.calories}</Text>
-                </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Protein</Text>
-                  <Text style={styles.nutritionValue}>{item.nutritionInfo.protein}g</Text>
-                </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Carbs</Text>
-                  <Text style={styles.nutritionValue}>{item.nutritionInfo.carbs}g</Text>
-                </View>
-                <View style={styles.nutritionItem}>
-                  <Text style={styles.nutritionLabel}>Fat</Text>
-                  <Text style={styles.nutritionValue}>{item.nutritionInfo.fat}g</Text>
+            {(item.calories || item.protein || item.carbs || item.fat) && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Nutrition (per serving)</Text>
+                <View style={styles.nutritionGrid}>
+                  {item.calories !== undefined && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Calories</Text>
+                      <Text style={styles.nutritionValue}>{item.calories}</Text>
+                    </View>
+                  )}
+                  {item.protein !== undefined && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Protein</Text>
+                      <Text style={styles.nutritionValue}>{item.protein}g</Text>
+                    </View>
+                  )}
+                  {item.carbs !== undefined && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Carbs</Text>
+                      <Text style={styles.nutritionValue}>{item.carbs}g</Text>
+                    </View>
+                  )}
+                  {item.fat !== undefined && (
+                    <View style={styles.nutritionItem}>
+                      <Text style={styles.nutritionLabel}>Fat</Text>
+                      <Text style={styles.nutritionValue}>{item.fat}g</Text>
+                    </View>
+                  )}
                 </View>
               </View>
-            </View>
+            )}
 
             {/* Allergens */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Allergens</Text>
-              <View style={styles.allergenList}>
-                {item.allergens.map((allergen, index) => (
-                  <View key={index} style={styles.allergenBadge}>
-                    <Text style={styles.allergenText}>{allergen}</Text>
-                  </View>
-                ))}
+            {item.allergens && item.allergens.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Allergens</Text>
+                <View style={styles.allergenList}>
+                  {item.allergens.map((allergen, index) => (
+                    <View key={index} style={styles.allergenBadge}>
+                      <Text style={styles.allergenText}>{allergen}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Customization Options */}
             <View style={styles.customizationSection}>
               {/* Sides */}
-              <Accordion
-                title="Choose Your Sides"
-                icon="checkmark-circle-outline"
-                defaultOpen={false}
-              >
-                <Text style={styles.accordionHelper}>Select up to 2 sides (included in price)</Text>
-                <CheckboxGroup
-                  options={SIDE_OPTIONS}
-                  selected={selectedSides}
-                  onSelect={setSelectedSides}
-                  maxSelections={2}
-                />
-              </Accordion>
+              {item.sides && item.sides.length > 0 && (
+                <Accordion
+                  title="Choose Your Sides"
+                  icon="checkmark-circle-outline"
+                  defaultOpen={false}
+                >
+                  <Text style={styles.accordionHelper}>Select up to 2 sides (included in price)</Text>
+                  <CheckboxGroup
+                    options={createOptionsFromArray(item.sides)}
+                    selected={selectedSides}
+                    onSelect={setSelectedSides}
+                    maxSelections={2}
+                  />
+                </Accordion>
+              )}
 
               {/* Drinks */}
-              <Accordion
-                title="Add a Drink"
-                icon="water-outline"
-                defaultOpen={false}
-              >
-                <Text style={styles.accordionHelper}>Select one drink</Text>
-                <RadioGroup
-                  options={DRINK_OPTIONS}
-                  selected={selectedDrink}
-                  onSelect={setSelectedDrink}
-                />
-              </Accordion>
+              {item.drinks && item.drinks.length > 0 && (
+                <Accordion
+                  title="Add a Drink"
+                  icon="water-outline"
+                  defaultOpen={false}
+                >
+                  <Text style={styles.accordionHelper}>Select one drink</Text>
+                  <RadioGroup
+                    options={createOptionsFromArray(item.drinks)}
+                    selected={selectedDrink}
+                    onSelect={setSelectedDrink}
+                  />
+                </Accordion>
+              )}
 
               {/* Extras */}
-              <Accordion
-                title="Add Extras"
-                icon="add-circle-outline"
-                defaultOpen={false}
-              >
-                <Text style={styles.accordionHelper}>Add extra items (additional charges apply)</Text>
-                <CheckboxGroup
-                  options={EXTRAS_OPTIONS}
-                  selected={selectedExtras}
-                  onSelect={setSelectedExtras}
-                />
-              </Accordion>
+              {item.extras && item.extras.length > 0 && (
+                <Accordion
+                  title="Add Extras"
+                  icon="add-circle-outline"
+                  defaultOpen={false}
+                >
+                  <Text style={styles.accordionHelper}>Add extra items</Text>
+                  <CheckboxGroup
+                    options={createOptionsFromArray(item.extras)}
+                    selected={selectedExtras}
+                    onSelect={setSelectedExtras}
+                  />
+                </Accordion>
+              )}
 
               {/* Ingredients */}
-              <Accordion
-                title="Customize Ingredients"
-                icon="settings-outline"
-                defaultOpen={false}
-              >
-                <Text style={styles.accordionHelper}>Add or remove ingredients</Text>
-                <CheckboxGroup
-                  options={INGREDIENTS_OPTIONS}
-                  selected={selectedIngredients}
-                  onSelect={setSelectedIngredients}
-                />
-              </Accordion>
+              {item.customIngredients && item.customIngredients.length > 0 && (
+                <Accordion
+                  title="Customize Ingredients"
+                  icon="settings-outline"
+                  defaultOpen={false}
+                >
+                  <Text style={styles.accordionHelper}>Add or remove ingredients</Text>
+                  <CheckboxGroup
+                    options={createIngredientOptions(item.customIngredients)}
+                    selected={selectedIngredients}
+                    onSelect={setSelectedIngredients}
+                  />
+                </Accordion>
+              )}
 
               {/* Quantity */}
               <View style={styles.quantitySection}>
@@ -258,6 +344,16 @@ const styles = StyleSheet.create({
   },
   page: {
     flex: 1,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    color: "#DC2626",
+    fontSize: 16,
+    fontWeight: "500",
   },
   scroll: {
     flex: 1,
