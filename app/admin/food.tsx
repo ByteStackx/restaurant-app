@@ -315,7 +315,7 @@ export default function AdminFood() {
               <View key={item.id} style={styles.row}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemPrice}>${item.price?.toFixed ? item.price.toFixed(2) : item.price}</Text>
+                  <Text style={styles.itemPrice}>R{item.price?.toFixed ? item.price.toFixed(2) : item.price}</Text>
                 </View>
                 <Pressable style={styles.editBtn} onPress={() => handleEdit(item)}>
                   <Text style={styles.editText}>Edit</Text>

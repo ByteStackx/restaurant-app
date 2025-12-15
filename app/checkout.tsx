@@ -89,7 +89,7 @@ export default function Checkout() {
     return { subtotal, deliveryFee, taxes, total };
   }, [items, cartSubtotal]);
 
-  const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+  const formatCurrency = (value: number) => `R${value.toFixed(2)}`;
 
   const isUsingNewAddress = selectedAddressId === "new";
 

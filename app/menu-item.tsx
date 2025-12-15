@@ -236,7 +236,7 @@ export default function MenuItemDetail() {
             {/* Price and Name */}
             <View style={styles.header}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+              <Text style={styles.price}>R{item.price.toFixed(2)}</Text>
             </View>
 
             {/* Description */}
@@ -376,7 +376,7 @@ export default function MenuItemDetail() {
               {/* Total Price Display */}
               <View style={styles.priceDisplay}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalPrice}>${calculateTotal().toFixed(2)}</Text>
+                <Text style={styles.totalPrice}>R{calculateTotal().toFixed(2)}</Text>
               </View>
             </View>
 

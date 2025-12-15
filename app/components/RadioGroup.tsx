@@ -39,7 +39,7 @@ export function RadioGroup({ options, selected, onSelect }: RadioGroupProps) {
               )}
             </View>
             {option.price !== undefined && option.price > 0 && (
-              <Text style={styles.price}>+${option.price.toFixed(2)}</Text>
+              <Text style={styles.price}>+R{option.price.toFixed(2)}</Text>
             )}
           </Pressable>
         );

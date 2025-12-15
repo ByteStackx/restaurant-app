@@ -89,7 +89,7 @@ export function CheckboxGroup({
             </View>
             {option.price !== undefined && option.price > 0 && (
               <Text style={[styles.price, isDisabled ? styles.disabledPrice : undefined]}>
-                +${option.price.toFixed(2)}
+                +R{option.price.toFixed(2)}
               </Text>
             )}
           </Pressable>

@@ -49,7 +49,7 @@ export function MenuItemCard({
           <Text style={styles.description} numberOfLines={2}>
             {description}
           </Text>
-          <Text style={styles.price}>${price.toFixed(2)}</Text>
+          <Text style={styles.price}>R{price.toFixed(2)}</Text>
         </View>
 
         <Pressable

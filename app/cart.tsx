@@ -157,7 +157,7 @@ export default function Cart() {
     return { subtotal, deliveryFee, taxes, total: grandTotal };
   }, [items, cartSubtotal]);
 
-  const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+  const formatCurrency = (value: number) => `R${value.toFixed(2)}`;
 
   const handleGoToMenu = () => {
     router.push("/menu");
