@@ -1,43 +1,30 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AuthInput } from "./components/AuthInput";
 import { BottomTabs } from "./components/BottomTabs";
 import { PrimaryButton } from "./components/PrimaryButton";
 import { TopNav } from "./components/TopNav";
-
-const SAVED_ADDRESSES = [
-  {
-    id: "home",
-    label: "Home",
-    line1: "123 Market Street",
-    line2: "Apt 4B",
-    cityStateZip: "San Francisco, CA 94103",
-    note: "Default",
-  },
-  {
-    id: "office",
-    label: "Office",
-    line1: "456 Mission Street",
-    line2: "Suite 210",
-    cityStateZip: "San Francisco, CA 94105",
-    note: "Weekdays",
-  },
-];
-
-const SAVED_CARDS = [
-  { id: "card-1", brand: "Visa", last4: "4242", expiry: "12/25" },
-  { id: "card-2", brand: "Mastercard", last4: "8844", expiry: "09/26" },
-];
-
-const ORDER_ITEMS = [
-  { id: "5", name: "Grilled Salmon", total: 24.99 },
-  { id: "8", name: "Fries", total: 11.98 },
-];
+import { useAuth } from "./lib/auth-context";
+import { useCart } from "./lib/cart-context";
+import { getUserProfile, type UserProfile } from "./services/firebase/user-service";
 
 export default function Checkout() {
-  const [selectedAddressId, setSelectedAddressId] = useState<string>(SAVED_ADDRESSES[0].id);
-  const [selectedCardId, setSelectedCardId] = useState<string>(SAVED_CARDS[0].id);
+  const router = useRouter();
+  const { user } = useAuth();
+  const { items, total: cartSubtotal, clear } = useCart();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("default");
+  const [selectedCardId, setSelectedCardId] = useState<string>("default");
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [newCard, setNewCard] = useState({
+    number: "",
+    expiry: "",
+    cvv: "",
+    name: "",
+  });
   const [newAddress, setNewAddress] = useState({
     label: "Other",
     line1: "",
@@ -47,26 +34,153 @@ export default function Checkout() {
     zip: "",
   });
 
+  // Load user profile for default address and card
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          setUserProfile(profile);
+        } catch (error) {
+          console.error("Failed to load user profile:", error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+    loadProfile();
+  }, [user]);
+
+  const savedAddresses = useMemo(() => {
+    if (!userProfile) return [];
+    return [
+      {
+        id: "default",
+        label: "Default Address",
+        line1: userProfile.addressLine1,
+        line2: userProfile.addressLine2,
+        cityStateZip: `${userProfile.city}, ${userProfile.state} ${userProfile.zipCode}`,
+        note: "From your profile",
+      },
+    ];
+  }, [userProfile]);
+
+  const savedCards = useMemo(() => {
+    if (!userProfile || !userProfile.cardNumber) return [];
+    const last4 = userProfile.cardNumber.slice(-4);
+    return [
+      {
+        id: "default",
+        brand: "Card",
+        last4,
+        expiry: userProfile.cardExpiry,
+        name: userProfile.cardName,
+      },
+    ];
+  }, [userProfile]);
+
   const totals = useMemo(() => {
-    const subtotal = ORDER_ITEMS.reduce((sum, item) => sum + item.total, 0);
-    const deliveryFee = 4.99;
+    const subtotal = cartSubtotal;
+    const deliveryFee = items.length > 0 ? 4.99 : 0;
     const taxes = subtotal * 0.08;
     const total = subtotal + deliveryFee + taxes;
     return { subtotal, deliveryFee, taxes, total };
-  }, []);
+  }, [items, cartSubtotal]);
 
   const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
   const isUsingNewAddress = selectedAddressId === "new";
 
+  const formatCardNumber = (text: string) => {
+    const cleaned = text.replace(/\s/g, "").replace(/\D/g, "");
+    const limited = cleaned.substring(0, 16);
+    const match = limited.match(/.{1,4}/g);
+    return match ? match.join(" ") : limited;
+  };
+
+  const formatExpiry = (text: string) => {
+    const cleaned = text.replace(/\D/g, "");
+    if (cleaned.length >= 2) {
+      return cleaned.substring(0, 2) + "/" + cleaned.substring(2, 4);
+    }
+    return cleaned;
+  };
+
+  const handleAddCard = () => {
+    // Validate card details
+    const cleanedNumber = newCard.number.replace(/\s/g, "");
+    if (cleanedNumber.length < 13 || cleanedNumber.length > 16) {
+      Alert.alert("Invalid Card", "Please enter a valid card number.");
+      return;
+    }
+    if (newCard.expiry.length !== 5 || !newCard.expiry.includes("/")) {
+      Alert.alert("Invalid Expiry", "Please enter expiry in MM/YY format.");
+      return;
+    }
+    if (newCard.cvv.length < 3) {
+      Alert.alert("Invalid CVV", "Please enter a valid CVV.");
+      return;
+    }
+    if (!newCard.name.trim()) {
+      Alert.alert("Invalid Name", "Please enter the cardholder name.");
+      return;
+    }
+
+    // Select the new card
+    setSelectedCardId("new-card");
+    setShowCardModal(false);
+    Alert.alert("Card Added", "Your new card has been added successfully.");
+  };
+
   const handlePlaceOrder = () => {
+    // Validate address
+    if (isUsingNewAddress) {
+      if (!newAddress.line1 || !newAddress.city || !newAddress.state || !newAddress.zip) {
+        Alert.alert("Missing Information", "Please fill in all required address fields.");
+        return;
+      }
+    }
+
+    // Validate payment method
+    if (savedCards.length === 0 && selectedCardId === "default") {
+      Alert.alert("No Payment Method", "Please add a payment card to your profile.");
+      return;
+    }
+
+    if (selectedCardId === "new-card") {
+      // Using the newly added card
+      const cleanedNumber = newCard.number.replace(/\s/g, "");
+      if (!cleanedNumber || cleanedNumber.length < 13) {
+        Alert.alert("Invalid Card", "Please add a valid payment card.");
+        return;
+      }
+    }
+
     const address = isUsingNewAddress
       ? `${newAddress.line1}, ${newAddress.city} ${newAddress.state} ${newAddress.zip}`
-      : selectedAddressId;
+      : savedAddresses.find((a) => a.id === selectedAddressId);
+
+    Alert.alert(
+      "Order Placed!",
+      `Your order of ${formatCurrency(totals.total)} has been placed successfully.`,
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            clear(); // Clear the cart
+            router.push("/menu"); // Navigate to menu
+          },
+        },
+      ]
+    );
+
     console.log("Placing order with", {
       address,
       card: selectedCardId,
       totals,
+      items,
     });
   };
 
@@ -74,6 +188,18 @@ export default function Checkout() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.page}>
         <TopNav />
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#DC2626" />
+          </View>
+        ) : items.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="cart-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>Your cart is empty</Text>
+            <Text style={styles.emptySubtitle}>Add items to your cart before checking out.</Text>
+            <PrimaryButton title="Go to Menu" onPress={() => router.push("/menu")} />
+          </View>
+        ) : (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
@@ -86,7 +212,7 @@ export default function Checkout() {
               <Text style={styles.sectionTitle}>Drop-off address</Text>
             </View>
             <View style={styles.card}>
-              {SAVED_ADDRESSES.map((address) => {
+              {savedAddresses.map((address) => {
                 const selected = selectedAddressId === address.id;
                 return (
                   <Pressable
@@ -171,7 +297,7 @@ export default function Checkout() {
               <Text style={styles.sectionTitle}>Payment method</Text>
             </View>
             <View style={styles.card}>
-              {SAVED_CARDS.map((card) => {
+              {savedCards.map((card) => {
                 const selected = selectedCardId === card.id;
                 return (
                   <Pressable
@@ -192,7 +318,22 @@ export default function Checkout() {
                   </Pressable>
                 );
               })}
-              <Pressable style={styles.addCardButton} onPress={() => console.log("Add card")}> 
+              {selectedCardId === "new-card" && newCard.number && (
+                <Pressable
+                  style={[styles.row, styles.selectRow]}
+                  onPress={() => setSelectedCardId("new-card")}
+                >
+                  <View style={styles.radioOuter}>
+                    <View style={styles.radioInner} />
+                  </View>
+                  <View style={styles.paymentText}>
+                    <Text style={styles.paymentLabel}>{newCard.name}</Text>
+                    <Text style={styles.paymentMeta}>•••• {newCard.number.slice(-4)} · Expires {newCard.expiry}</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                </Pressable>
+              )}
+              <Pressable style={styles.addCardButton} onPress={() => setShowCardModal(true)}> 
                 <Ionicons name="add" size={18} color="#111827" />
                 <Text style={styles.addCardText}>Use a different card</Text>
               </Pressable>
@@ -206,13 +347,18 @@ export default function Checkout() {
               <Text style={styles.sectionTitle}>Order total</Text>
             </View>
             <View style={styles.card}>
-              {ORDER_ITEMS.map((item) => (
-                <View key={item.id} style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>{item.name}</Text>
-                  <Text style={styles.totalValue}>{formatCurrency(item.total)}</Text>
-                </View>
-              ))}
-              <View style={styles.totalRow}>
+              {items.map((item, index) => {
+                const itemTotal = (item.price + (item.addOnTotal || 0)) * item.quantity;
+                return (
+                  <View key={`${item.id}-${index}`} style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>
+                      {item.name} {item.quantity > 1 && `(×${item.quantity})`}
+                    </Text>
+                    <Text style={styles.totalValue}>{formatCurrency(itemTotal)}</Text>
+                  </View>
+                );
+              })}
+              <View style={[styles.totalRow, styles.divider]}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
                 <Text style={styles.totalValue}>{formatCurrency(totals.subtotal)}</Text>
               </View>
@@ -231,16 +377,88 @@ export default function Checkout() {
             </View>
           </View>
         </ScrollView>
+        )}
 
-        <View style={styles.footer}>
-          <View>
-            <Text style={styles.footerLabel}>Paying</Text>
-            <Text style={styles.footerValue}>{formatCurrency(totals.total)}</Text>
+        {!loading && items.length > 0 && (
+          <View style={styles.footer}>
+            <View>
+              <Text style={styles.footerLabel}>Paying</Text>
+              <Text style={styles.footerValue}>{formatCurrency(totals.total)}</Text>
+            </View>
+            <PrimaryButton title="Place order" onPress={handlePlaceOrder} />
           </View>
-          <PrimaryButton title="Place order" onPress={handlePlaceOrder} />
-        </View>
+        )}
       </View>
       <BottomTabs activeKey="cart" />
+
+      {/* Add Card Modal */}
+      <Modal
+        visible={showCardModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCardModal(false)}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowCardModal(false)}>
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Payment Card</Text>
+                <Pressable onPress={() => setShowCardModal(false)}>
+                  <Ionicons name="close" size={24} color="#111827" />
+                </Pressable>
+              </View>
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                <View style={styles.modalForm}>
+                  <AuthInput
+                    label="Card number"
+                    value={newCard.number}
+                    onChangeText={(text) => setNewCard({ ...newCard, number: formatCardNumber(text) })}
+                    keyboardType="number-pad"
+                    placeholder="1234 5678 9012 3456"
+                    maxLength={19}
+                  />
+                  <View style={styles.cardRow}>
+                    <View style={styles.cardHalf}>
+                      <AuthInput
+                        label="Expiry date"
+                        value={newCard.expiry}
+                        onChangeText={(text) => setNewCard({ ...newCard, expiry: formatExpiry(text) })}
+                        keyboardType="number-pad"
+                        placeholder="MM/YY"
+                        maxLength={5}
+                      />
+                    </View>
+                    <View style={styles.cardHalf}>
+                      <AuthInput
+                        label="CVV"
+                        value={newCard.cvv}
+                        onChangeText={(text) => setNewCard({ ...newCard, cvv: text.replace(/\D/g, "") })}
+                        keyboardType="number-pad"
+                        placeholder="123"
+                        maxLength={4}
+                        secureTextEntry
+                      />
+                    </View>
+                  </View>
+                  <AuthInput
+                    label="Cardholder name"
+                    value={newCard.name}
+                    onChangeText={(text) => setNewCard({ ...newCard, name: text })}
+                    placeholder="John Doe"
+                    autoCapitalize="words"
+                  />
+                </View>
+              </ScrollView>
+              <View style={styles.modalActions}>
+                <PrimaryButton title="Add Card" onPress={handleAddCard} />
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -252,6 +470,25 @@ const styles = StyleSheet.create({
   },
   page: {
     flex: 1,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#111827",
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 8,
   },
   scroll: {
     flex: 1,
@@ -378,6 +615,12 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontWeight: "700",
   },
+  divider: {
+    marginTop: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
   totalRowEmphasis: {
     marginTop: 6,
     borderTopWidth: 1,
@@ -414,5 +657,46 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#111827",
     fontWeight: "900",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  modalScroll: {
+    maxHeight: 400,
+  },
+  modalForm: {
+    gap: 16,
+  },
+  cardRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cardHalf: {
+    flex: 1,
+  },
+  modalActions: {
+    marginTop: 16,
   },
 });
