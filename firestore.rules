@@ -17,5 +17,16 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if request.auth != null;
     }
+
+    // Orders collection - authenticated users can create their own orders
+    match /orders/{orderId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.uid in getAllAdminUids());
+    }
+
+    // Helper function to get all admin UIDs (optional - for future admin dashboard)
+    function getAllAdminUids() {
+      return ['admin-uid-here']; // Replace with actual admin UIDs or remove if not needed
+    }
   }
 }
