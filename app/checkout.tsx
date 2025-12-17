@@ -8,6 +8,7 @@ import { PrimaryButton } from "./components/PrimaryButton";
 import { TopNav } from "./components/TopNav";
 import { useAuth } from "./lib/auth-context";
 import { useCart } from "./lib/cart-context";
+import { createOrder } from "./services/firebase/order-service";
 import { getUserProfile, type UserProfile } from "./services/firebase/user-service";
 
 export default function Checkout() {
@@ -19,6 +20,7 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("default");
   const [selectedCardId, setSelectedCardId] = useState<string>("default");
   const [showCardModal, setShowCardModal] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [newCard, setNewCard] = useState({
     number: "",
     expiry: "",
@@ -91,6 +93,34 @@ export default function Checkout() {
 
   const formatCurrency = (value: number) => `R${value.toFixed(2)}`;
 
+  const processStripePayment = async (amount: number) => {
+    const endpoint = process.env.EXPO_PUBLIC_STRIPE_PAYMENT_ENDPOINT;
+    if (!endpoint) {
+      throw new Error("Stripe payment endpoint not configured. Set EXPO_PUBLIC_STRIPE_PAYMENT_ENDPOINT.");
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: Math.round(amount * 100),
+        currency: "zar",
+        description: "Restaurant order",
+      }),
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || "Stripe payment failed.");
+    }
+
+    const data = await response.json();
+    return {
+      intentId: data.paymentIntentId || data.intentId || data.id,
+      status: data.status || "requires_confirmation",
+    };
+  };
+
   const isUsingNewAddress = selectedAddressId === "new";
 
   const formatCardNumber = (text: string) => {
@@ -134,13 +164,19 @@ export default function Checkout() {
     Alert.alert("Card Added", "Your new card has been added successfully.");
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
+    if (placingOrder) return;
+
     // Validate address
     if (isUsingNewAddress) {
       if (!newAddress.line1 || !newAddress.city || !newAddress.state || !newAddress.zip) {
         Alert.alert("Missing Information", "Please fill in all required address fields.");
         return;
       }
+    } else if (savedAddresses.length === 0) {
+      Alert.alert("Add an address", "Please add a delivery address before placing your order.");
+      setSelectedAddressId("new");
+      return;
     }
 
     // Validate payment method
@@ -158,30 +194,81 @@ export default function Checkout() {
       }
     }
 
-    const address = isUsingNewAddress
-      ? `${newAddress.line1}, ${newAddress.city} ${newAddress.state} ${newAddress.zip}`
-      : savedAddresses.find((a) => a.id === selectedAddressId);
+    setPlacingOrder(true);
 
-    Alert.alert(
-      "Order Placed!",
-      `Your order of ${formatCurrency(totals.total)} has been placed successfully.`,
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            clear(); // Clear the cart
-            router.push("/menu"); // Navigate to menu
+    try {
+      const selectedAddress = savedAddresses.find((a) => a.id === selectedAddressId);
+      const addressString = isUsingNewAddress
+        ? `${newAddress.line1}, ${newAddress.city} ${newAddress.state} ${newAddress.zip}`
+        : selectedAddress
+        ? `${selectedAddress.line1}${selectedAddress.line2 ? ", " + selectedAddress.line2 : ""}, ${selectedAddress.cityStateZip}`
+        : "";
+
+      const last4 =
+        selectedCardId === "new-card"
+          ? newCard.number.replace(/\s/g, "").slice(-4)
+          : savedCards.find((c) => c.id === selectedCardId)?.last4;
+
+      const payment = await processStripePayment(totals.total);
+
+      const orderItems = items.map((item) => {
+        const addOnTotal = item.addOnTotal || 0;
+        return {
+          itemId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          basePrice: item.price,
+          addOnTotal,
+          lineTotal: (item.price + addOnTotal) * item.quantity,
+          selections: {
+            sides: item.sides || [],
+            drink: item.drink,
+            extras: item.extras || [],
+            ingredients: item.ingredients || [],
           },
-        },
-      ]
-    );
+          imageUrl: item.imageUrl,
+        };
+      });
 
-    console.log("Placing order with", {
-      address,
-      card: selectedCardId,
-      totals,
-      items,
-    });
+      await createOrder({
+        userId: user?.uid ?? null,
+        status: payment.status === "succeeded" || payment.status === "requires_capture" ? "paid" : "pending",
+        address: addressString,
+        items: orderItems,
+        totals: { ...totals, currency: "ZAR" },
+        payment: {
+          provider: "stripe",
+          status: payment.status,
+          intentId: payment.intentId,
+          amount: totals.total,
+          currency: "ZAR",
+          last4,
+          methodType: "card",
+        },
+        contactName: userProfile ? `${userProfile.firstName} ${userProfile.lastName}`.trim() : undefined,
+        contactPhone: userProfile?.phone,
+      });
+
+      Alert.alert(
+        "Order Placed!",
+        `Your order of ${formatCurrency(totals.total)} has been placed successfully.`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              clear();
+              router.push("/menu");
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Failed to place order:", error);
+      const message = error instanceof Error ? error.message : "We couldn't process your payment. Please try again.";
+      Alert.alert("Payment failed", message);
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   return (
@@ -385,7 +472,7 @@ export default function Checkout() {
               <Text style={styles.footerLabel}>Paying</Text>
               <Text style={styles.footerValue}>{formatCurrency(totals.total)}</Text>
             </View>
-            <PrimaryButton title="Place order" onPress={handlePlaceOrder} />
+            <PrimaryButton title={placingOrder ? "Placing..." : "Place order"} onPress={handlePlaceOrder} disabled={placingOrder} />
           </View>
         )}
       </View>
