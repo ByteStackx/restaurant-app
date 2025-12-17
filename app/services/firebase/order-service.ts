@@ -50,30 +50,17 @@ export type OrderRecord = {
   createdAt?: unknown;
 };
 
-function cleanUndefined(obj: unknown): unknown {
-  if (obj === null || obj === undefined) return undefined;
-  if (Array.isArray(obj)) {
-    return obj.map(cleanUndefined).filter((v) => v !== undefined);
-  }
-  if (typeof obj === "object") {
-    const cleaned: Record<string, unknown> = {};
-    Object.entries(obj).forEach(([key, value]) => {
-      const cleanedValue = cleanUndefined(value);
-      if (cleanedValue !== undefined) {
-        cleaned[key] = cleanedValue;
-      }
-    });
-    return Object.keys(cleaned).length > 0 ? cleaned : undefined;
-  }
-  return obj;
-}
-
 export async function createOrder(order: OrderRecord): Promise<string> {
-  // Recursively filter out undefined values - Firestore doesn't allow them
-  const cleanedOrder = cleanUndefined(order) as Record<string, unknown>;
+  // Filter out undefined values - Firestore doesn't allow them
+  const cleanOrder: Record<string, unknown> = {};
+  Object.entries(order).forEach(([key, value]) => {
+    if (value !== undefined) {
+      cleanOrder[key] = value;
+    }
+  });
 
   const docRef = await addDoc(collection(db, "orders"), {
-    ...cleanedOrder,
+    ...cleanOrder,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
