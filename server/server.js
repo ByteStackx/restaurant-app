@@ -23,23 +23,37 @@ app.get("/health", (req, res) => {
 // Create PaymentIntent endpoint
 app.post("/pay", async (req, res) => {
   try {
-    const { amount, currency = "zar", description = "Restaurant order" } = req.body;
+    const { amount, currency = "zar", description = "Restaurant order", confirm } = req.body;
 
     // Validate amount
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: "Invalid amount" });
     }
 
-    console.log(`Creating PaymentIntent: amount=${amount}, currency=${currency}`);
+    const shouldAutoConfirm = Boolean(confirm) || process.env.STRIPE_TEST_AUTOCONFIRM === "true";
 
-    const intent = await stripe.paymentIntents.create({
-      amount: Math.round(amount), // already in cents from client
-      currency,
-      description,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
+    console.log(`Creating PaymentIntent: amount=${amount}, currency=${currency}, autoConfirm=${shouldAutoConfirm}`);
+
+    let intent;
+    if (shouldAutoConfirm) {
+      // DEV/TEST ONLY: force card-only and auto-confirm with test payment method
+      intent = await stripe.paymentIntents.create({
+        amount: Math.round(amount),
+        currency,
+        description,
+        payment_method_types: ["card"],
+        payment_method: "pm_card_visa",
+        confirm: true,
+      });
+    } else {
+      // Prevent redirect-based payment methods to avoid needing a return_url in RN
+      intent = await stripe.paymentIntents.create({
+        amount: Math.round(amount),
+        currency,
+        description,
+        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+      });
+    }
 
     console.log(`PaymentIntent created: ${intent.id}, status=${intent.status}`);
 
@@ -50,9 +64,9 @@ app.post("/pay", async (req, res) => {
     });
   } catch (error) {
     console.error("Stripe error:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown stripe error";
-    res.status(400).json({ error: message });
+    const message = error && error.message ? error.message : "Unknown stripe error";
+    const code = error && error.code ? error.code : undefined;
+    res.status(400).json({ error: message, code });
   }
 });
 

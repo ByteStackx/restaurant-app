@@ -106,6 +106,8 @@ export default function Checkout() {
         amount: Math.round(amount * 100),
         currency: "zar",
         description: "Restaurant order",
+        // Set to true for DEV to request server auto-confirm with test method
+        confirm: true,
       }),
     });
 
@@ -221,12 +223,12 @@ export default function Checkout() {
           addOnTotal,
           lineTotal: (item.price + addOnTotal) * item.quantity,
           selections: {
-            sides: item.sides || [],
-            drink: item.drink,
-            extras: item.extras || [],
-            ingredients: item.ingredients || [],
+            ...(item.sides && item.sides.length ? { sides: item.sides } : {}),
+            ...(item.drink ? { drink: item.drink } : {}),
+            ...(item.extras && item.extras.length ? { extras: item.extras } : {}),
+            ...(item.ingredients && item.ingredients.length ? { ingredients: item.ingredients } : {}),
           },
-          imageUrl: item.imageUrl,
+          ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
         };
       });
 
@@ -242,7 +244,7 @@ export default function Checkout() {
           intentId: payment.intentId,
           amount: totals.total,
           currency: "ZAR",
-          last4,
+          ...(last4 ? { last4 } : {}),
           methodType: "card",
         },
         contactName: userProfile ? `${userProfile.firstName} ${userProfile.lastName}`.trim() : undefined,
