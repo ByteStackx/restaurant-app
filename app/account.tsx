@@ -7,6 +7,7 @@ import { BottomTabs } from "./components/BottomTabs";
 import { PrimaryButton } from "./components/PrimaryButton";
 import { TopNav } from "./components/TopNav";
 import { useAuth } from "./lib/auth-context";
+import { listOrdersByUser, type OrderDoc } from "./services/firebase/order-service";
 import { getUserProfile, updateUserProfile } from "./services/firebase/user-service";
 
 export default function Account() {
@@ -30,6 +31,9 @@ export default function Account() {
     cardCvv: "",
     cardName: "",
   });
+  const [orders, setOrders] = useState<OrderDoc[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -69,6 +73,28 @@ export default function Account() {
     };
 
     fetchProfile();
+  }, [user]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchOrders = async () => {
+      if (!user) return;
+      setOrdersLoading(true);
+      setOrdersError(null);
+      try {
+        const data = await listOrdersByUser(user.uid);
+        if (isMounted) setOrders(data);
+      } catch (error) {
+        console.error("Error loading orders:", error);
+        if (isMounted) setOrdersError("Failed to load orders");
+      } finally {
+        if (isMounted) setOrdersLoading(false);
+      }
+    };
+    fetchOrders();
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const handleSave = async () => {
@@ -119,6 +145,30 @@ export default function Account() {
           style: "destructive",
         },
       ]
+    );
+  };
+
+  const formatCurrency = (value: number) => `R${value.toFixed(2)}`;
+  const formatDate = (date?: Date | null) => {
+    if (!date) return "";
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const statusPill = (status: OrderDoc["status"]) => {
+    const labelMap: Record<OrderDoc["status"], string> = {
+      pending: "Pending",
+      paid: "Paid",
+      failed: "Failed",
+    };
+    const colorMap: Record<OrderDoc["status"], string> = {
+      pending: "#F59E0B",
+      paid: "#10B981",
+      failed: "#EF4444",
+    };
+    return (
+      <View style={[styles.statusPill, { backgroundColor: `${colorMap[status]}20`, borderColor: colorMap[status] }]}> 
+        <Text style={[styles.statusPillText, { color: colorMap[status] }]}>{labelMap[status]}</Text>
+      </View>
     );
   };
 
@@ -312,6 +362,43 @@ export default function Account() {
             </View>
           </View>
 
+          {/* Order History */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="time-outline" size={20} color="#111827" />
+              <Text style={styles.sectionTitle}>Order history</Text>
+            </View>
+            <View style={styles.card}>
+              {ordersLoading ? (
+                <Text style={styles.mutedText}>Loading orders...</Text>
+              ) : ordersError ? (
+                <Text style={[styles.mutedText, styles.errorText]}>{ordersError}</Text>
+              ) : orders.length === 0 ? (
+                <Text style={styles.mutedText}>No orders yet. Your past orders will appear here.</Text>
+              ) : (
+                orders.map((order) => {
+                  const itemSummary = (order.items || [])
+                    .map((item) => `${item.name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`)
+                    .join(", ");
+                  return (
+                    <View key={order.id} style={styles.orderRow}>
+                      <View style={styles.orderRowHeader}>
+                        <View style={styles.orderRowLeft}>
+                          <Text style={styles.orderDate}>{formatDate(order.createdAt || null)}</Text>
+                          {statusPill(order.status)}
+                        </View>
+                        <Text style={styles.orderTotal}>{formatCurrency(order.totals?.total || 0)}</Text>
+                      </View>
+                      <Text style={styles.orderItems} numberOfLines={2}>
+                        {itemSummary}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </View>
+
           {/* Account Actions */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -319,22 +406,6 @@ export default function Account() {
               <Text style={styles.sectionTitle}>Account settings</Text>
             </View>
             <View style={styles.card}>
-              <Pressable style={styles.actionRow}>
-                <View style={styles.actionContent}>
-                  <Ionicons name="notifications-outline" size={20} color="#111827" />
-                  <Text style={styles.actionText}>Notification preferences</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </Pressable>
-              <View style={styles.divider} />
-              <Pressable style={styles.actionRow}>
-                <View style={styles.actionContent}>
-                  <Ionicons name="time-outline" size={20} color="#111827" />
-                  <Text style={styles.actionText}>Order history</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </Pressable>
-              <View style={styles.divider} />
               <Pressable style={styles.actionRow}>
                 <View style={styles.actionContent}>
                   <Ionicons name="help-circle-outline" size={20} color="#111827" />
@@ -477,6 +548,52 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   actionTextDanger: {
+    color: "#EF4444",
+  },
+  mutedText: {
+    color: "#6B7280",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  orderRow: {
+    gap: 6,
+    paddingVertical: 6,
+  },
+  orderRowHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  orderRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  orderDate: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  orderTotal: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  orderItems: {
+    fontSize: 13,
+    color: "#4B5563",
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  errorText: {
     color: "#EF4444",
   },
   divider: {
