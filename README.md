@@ -1,50 +1,61 @@
-# Welcome to your Expo app 👋
+# Restaurant App — How to Use
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is a simple guide for using the app as a customer or an admin (no developer setup required).
 
-## Get started
+## Customer
 
-1. Install dependencies
+- Authentication (Account Page)
+   - For new customer, you are able to register by providing all the fields needed.
+   - For existing customers, you are able to access your account by providing your email and password on the log in screen.
 
-   ```bash
-   npm install
-   ```
+- Home
+   - The top banner highlights what’s new today.
+   - “Quick picks” and “For later” give you fast ways to discover items.
 
-2. Start the app
+- Browse the Menu
+   - Open the Menu tab to see categories (Starters, Mains, Desserts, Drinks, etc.).
+   - Tap an item to view details and make choices (sides, extras, drinks) when needed.
+   - If an item has no required options, you can add it directly from the card.
 
-   ```bash
-   npx expo start
-   ```
+- Customize
+   - On the item details screen, select available sides, drinks, or extras (if offered).
+   - The price updates based on your selections and quantity.
 
-In the output, you'll find options to open the app in a
+- Add to Cart
+   - Use the “Add” button (from the card or item screen) to add items to your cart.
+   - Open the Cart tab to review items, change quantities, or remove them.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- Checkout & Pay
+   - Proceed to Checkout from the cart.
+   - Sign in or create an account if prompted (checkout requires an account).
+   - Confirm your delivery details and place the order.
+   - Payments are processed securely (card) and you’ll see a confirmation when successful.
+   - Add test card 4242 4242 4242 4242 with any future expiry date & CVV to use.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- Account & Orders
+   - In the Account tab, view your profile and past orders.
+   - Each order shows status, date, items, and totals.
 
-## Get a fresh project
+## Admin
 
-When you're ready, run:
+- Access
+   - If your account is marked as an admin, you’ll be automatically routed to the admin dashboard after logging in.
+   - See google drive folder for admin credentials.
 
-```bash
-npm run reset-project
-```
+- Dashboard
+   - View orders, recent activity, and basic analytics.
+   - Review order details and statuses.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- Menu Management
+   - Add or edit menu items: name, description, price, image, and category.
 
-## Learn more
+Note: Admin access is restricted to approved accounts only.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Tips
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Currency: Prices are shown in Rands (R).
+- Connectivity: A stable internet connection is required to browse, sign in, and place orders.
+- Sign-in: You can create an account from the Login/Register pages when prompted at checkout or from the Account tab.
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Drive Folder
+- Android download link: https://drive.google.com/drive/folders/1AFwuSr9TWEiMKrCORq06ETUjg9V6PHSE?usp=sharing
