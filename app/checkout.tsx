@@ -281,6 +281,18 @@ export default function Checkout() {
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color="#DC2626" />
           </View>
+        ) : !user ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="person-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>Sign in to checkout</Text>
+            <Text style={styles.emptySubtitle}>You need to be signed in to place an order.</Text>
+            <View style={styles.authButtons}>
+              <PrimaryButton title="Sign in" onPress={() => router.push("/login")} />
+              <Pressable style={styles.secondaryButton} onPress={() => router.push("/register")}>
+                <Text style={styles.secondaryButtonText}>Create account</Text>
+              </Pressable>
+            </View>
+          </View>
         ) : items.length === 0 ? (
           <View style={styles.centerContainer}>
             <Ionicons name="cart-outline" size={64} color="#9CA3AF" />
@@ -787,5 +799,26 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     marginTop: 16,
+  },
+  authButtons: {
+    width: "100%",
+    gap: 12,
+    marginTop: 16,
+    paddingHorizontal: 40,
+  },
+  secondaryButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  secondaryButtonText: {
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.4,
   },
 });
