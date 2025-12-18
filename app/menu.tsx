@@ -5,6 +5,7 @@ import { BottomTabs } from "./components/BottomTabs";
 import { FoodTypeSlider } from "./components/FoodTypeSlider";
 import { MenuItemCard, MenuItemCardProps } from "./components/MenuItemCard";
 import { TopNav } from "./components/TopNav";
+import { useCart } from "./lib/cart-context";
 import { listMenuItems, MenuItem } from "./services/firebase/admin-service";
 
 type FoodCategory = "starters" | "salads" | "mains" | "sides" | "desserts" | "drinks";
@@ -40,12 +41,16 @@ const organizeMenuItemsByCategory = (
   items.forEach((item) => {
     const category = item.foodType as FoodCategory;
     if (category && organized[category] && item.id) {
+      // Check if item has mandatory options (sides array with content)
+      const hasMandatoryOptions = Boolean(item.sides && item.sides.length > 0);
+      
       organized[category].items.push({
         id: item.id,
         name: item.name,
         description: item.description,
         price: item.price,
         imageUrl: item.imageUrl,
+        hasMandatoryOptions,
       });
     }
   });
@@ -55,10 +60,12 @@ const organizeMenuItemsByCategory = (
 
 export default function Menu() {
   const router = useRouter();
+  const { addItem } = useCart();
   const [activeCategory, setActiveCategory] = useState<FoodCategory>("starters");
   const [menuData, setMenuData] = useState<Record<FoodCategory, { items: MenuItemCardProps[]; title: string }>>(
     createEmptyMenuData()
   );
+  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const sectionRefs = useRef<Record<FoodCategory, number>>({
@@ -77,6 +84,7 @@ export default function Menu() {
       try {
         setLoading(true);
         const items = await listMenuItems();
+        setAllMenuItems(items);
         const organized = organizeMenuItemsByCategory(items);
         setMenuData(organized);
         setError(null);
@@ -92,7 +100,17 @@ export default function Menu() {
   }, []);
 
   const handleAddToCart = (itemId: string) => {
-    console.log("Added to cart:", itemId);
+    const item = allMenuItems.find((i) => i.id === itemId);
+    if (!item) return;
+
+    // Add item with default quantity and no customizations
+    addItem({
+      id: item.id!,
+      name: item.name,
+      price: item.price,
+      quantity: 1,
+      imageUrl: item.imageUrl,
+    });
   };
 
   const handleItemPress = (itemId: string) => {
@@ -105,7 +123,6 @@ export default function Menu() {
     const scrollY = event.nativeEvent.contentOffset.y;
     let currentCategory = activeCategory;
 
-    // Find which section is currently in view
     for (const category of CATEGORY_ORDER) {
       const sectionY = sectionRefs.current[category];
       if (sectionY !== undefined && scrollY >= sectionY - 100) {

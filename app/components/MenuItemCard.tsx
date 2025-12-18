@@ -7,6 +7,7 @@ export type MenuItemCardProps = {
   description: string;
   price: number;
   imageUrl?: string;
+  hasMandatoryOptions?: boolean;
   onAddToCart?: (itemId: string) => void;
   onPress?: (itemId: string) => void;
 };
@@ -17,9 +18,21 @@ export function MenuItemCard({
   description,
   price,
   imageUrl,
+  hasMandatoryOptions = false,
   onAddToCart,
   onPress,
 }: MenuItemCardProps) {
+  const handleAddButtonPress = (e: any) => {
+    e.stopPropagation();
+    if (hasMandatoryOptions) {
+      // Navigate to details page if item has mandatory options
+      onPress?.(id);
+    } else {
+      // Add directly to cart if no mandatory options
+      onAddToCart?.(id);
+    }
+  };
+
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -57,7 +70,7 @@ export function MenuItemCard({
             styles.addButton,
             pressed && styles.pressed,
           ]}
-          onPress={() => onAddToCart?.(id)}
+          onPress={handleAddButtonPress}
         >
           <Ionicons name="add-circle" size={28} color="#111827" />
           <Text style={styles.buttonText}>Add</Text>
