@@ -1,5 +1,5 @@
 import { Link, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -13,10 +13,24 @@ import { useAuth } from "./lib/auth-context";
 
 export default function Login() {
   const router = useRouter();
-  const { login, error, clearError } = useAuth();
+  const { login, error, clearError, isAdmin, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+
+  // Only redirect after successful login
+  useEffect(() => {
+    if (shouldRedirect && user) {
+      setIsLoading(false);
+      if (isAdmin) {
+        router.replace("/admin");
+      } else {
+        router.replace("/home");
+      }
+      setShouldRedirect(false);
+    }
+  }, [shouldRedirect, user, isAdmin]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -26,10 +40,9 @@ export default function Login() {
       setIsLoading(true);
       clearError();
       await login(email, password);
-      router.push("/home");
+      setShouldRedirect(true);
     } catch (_err) {
       // Error is handled in AuthContext and available via 'error'
-    } finally {
       setIsLoading(false);
     }
   };

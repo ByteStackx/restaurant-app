@@ -1,5 +1,6 @@
 import {
     createUserWithEmailAndPassword,
+    getIdTokenResult,
     onAuthStateChanged,
     signInWithEmailAndPassword,
     signOut,
@@ -28,6 +29,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   error: string | null;
+  isAdmin: boolean;
   signup: (email: string, password: string, profileData: ProfileData) => Promise<User>;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
@@ -54,10 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // Check custom claims for admin status
+        try {
+          const tokenResult = await getIdTokenResult(currentUser);
+          setIsAdmin(tokenResult.claims.admin === true);
+        } catch (err) {
+          console.error("Error checking admin status:", err);
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
       setLoading(false);
     });
 
@@ -115,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading,
         error,
+        isAdmin,
         signup,
         login,
         logout,
