@@ -2,7 +2,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import admin from "firebase-admin";
-import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
 import { fileURLToPath } from "url";
@@ -19,15 +18,15 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 // Initialize Firebase Admin
-const serviceAccountPath = path.join(__dirname, "serviceAccountKey.json");
-if (fs.existsSync(serviceAccountPath)) {
-  const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+if (serviceAccountEnv) {
+  const serviceAccount = JSON.parse(serviceAccountEnv);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
-  console.log("Firebase Admin SDK initialized");
+  console.log("Firebase Admin SDK initialized from env");
 } else {
-  console.warn("serviceAccountKey.json not found - admin endpoints will not work");
+  console.warn("FIREBASE_SERVICE_ACCOUNT not set - admin endpoints will not work");
 }
 
 // Middleware
