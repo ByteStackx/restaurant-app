@@ -184,6 +184,12 @@ export default function Account() {
             <Text style={styles.emptyText}>
               Create an account or sign in to manage your profile, orders, and preferences.
             </Text>
+            <View style={styles.emptyActions}>
+              <PrimaryButton title="Log in" onPress={() => router.push("/login")} />
+              <Pressable style={styles.emptySecondaryButton} onPress={() => router.push("/register")}>
+                <Text style={styles.emptySecondaryButtonText}>Create account</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
         <BottomTabs activeKey="account" />
@@ -641,6 +647,26 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 8,
+  },
+  emptyActions: {
+    width: "100%",
+    gap: 12,
+    marginTop: 16,
+  },
+  emptySecondaryButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  emptySecondaryButtonText: {
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.4,
   },
 });
 
