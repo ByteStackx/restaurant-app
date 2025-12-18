@@ -101,3 +101,21 @@ export async function listOrdersByUser(userId: string): Promise<OrderDoc[]> {
     };
   });
 }
+
+export async function getAllOrders(): Promise<OrderDoc[]> {
+  const ordersRef = collection(db, "orders");
+  const q = query(ordersRef, orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+
+  return snap.docs.map((docSnap) => {
+    const data = docSnap.data() as OrderRecord & { createdAt?: { toDate?: () => Date } };
+    const createdAt = data.createdAt && typeof data.createdAt === "object" && typeof (data.createdAt as any).toDate === "function"
+      ? (data.createdAt as any).toDate()
+      : null;
+    return {
+      id: docSnap.id,
+      ...data,
+      createdAt,
+    };
+  });
+}

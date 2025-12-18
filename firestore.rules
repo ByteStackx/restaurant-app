@@ -18,15 +18,15 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null;
     }
 
-    // Orders collection - authenticated users can create their own orders
+    // Orders collection - users read their own, admins read all
     match /orders/{orderId} {
       allow create: if request.auth != null;
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.uid in getAllAdminUids());
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Helper function to get all admin UIDs (optional - for future admin dashboard)
-    function getAllAdminUids() {
-      return ['admin-uid-here']; // Replace with actual admin UIDs or remove if not needed
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth.uid in get(/databases/$(database)/documents/admin/admins).data.uids;
     }
   }
 }
