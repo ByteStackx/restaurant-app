@@ -4,7 +4,7 @@ export function TopNav() {
   return (
     <View style={styles.container}>
       <View style={styles.logoBadge}>
-        <Text style={styles.logoText}>LOGO</Text>
+        <Text style={styles.logoText}>Flavoré</Text>
       </View>
     </View>
   );
@@ -21,16 +21,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logoBadge: {
-    width: 64,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#111827",
     alignItems: "center",
     justifyContent: "center",
   },
   logoText: {
-    color: "#F9FAFB",
-    fontWeight: "800",
-    letterSpacing: 1,
+    color: "#111827",
+    fontWeight: "600",
+    fontSize: 24,
+    fontStyle: "italic",
+    letterSpacing: 0.5,
   },
 });

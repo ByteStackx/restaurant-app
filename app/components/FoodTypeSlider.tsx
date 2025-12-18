@@ -59,6 +59,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingLeft: 20,
+    paddingRight: 20,
   },
   scrollContent: {
     paddingVertical: 8,

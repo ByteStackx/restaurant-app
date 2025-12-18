@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BottomTabs } from "./components/BottomTabs";
 import { TopNav } from "./components/TopNav";
 
@@ -13,37 +13,65 @@ export default function Home() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.hero}>
-            <Text style={styles.eyebrow}>Today</Text>
-            <Text style={styles.title}>Fresh flavors waiting for you</Text>
-            <Text style={styles.subtitle}>
-              Explore the menu, reorder your favorites, and track your cart — all
-              in one place.
-            </Text>
-          </View>
+          <ImageBackground
+            source={require("../assets/images/bg-image.jpg")}
+            style={styles.hero}
+            imageStyle={styles.heroImage}
+            resizeMode="cover"
+          >
+            <View style={styles.heroOverlay}>
+              <Text style={styles.eyebrow}>Today</Text>
+              <Text style={styles.title}>Fresh flavors waiting for you</Text>
+              <Text style={styles.subtitle}>
+                Explore the menu, reorder your favorites, and track your cart — all
+                in one place.
+              </Text>
+            </View>
+          </ImageBackground>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quick picks</Text>
             <View style={styles.cardRow}>
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Popular</Text>
-                <Text style={styles.cardText}>Most ordered this week.</Text>
-              </View>
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Chef's choice</Text>
-                <Text style={styles.cardText}>Seasonal highlights to try.</Text>
-              </View>
+              <ImageBackground
+                source={require("../assets/images/bg-menu.jpg")}
+                style={styles.card}
+                imageStyle={styles.cardImage}
+                resizeMode="cover"
+              >
+                <View style={styles.cardOverlay}>
+                  <Text style={styles.cardTitle}>Explore our menu</Text>
+                  <Text style={styles.cardText}>So many delicious options to choose from.</Text>
+                </View>
+              </ImageBackground>
+              <ImageBackground
+                source={require("../assets/images/bg-cf.jpg")}
+                style={styles.card}
+                imageStyle={styles.cardImage}
+                resizeMode="cover"
+              >
+                <View style={styles.cardOverlay}>
+                  <Text style={styles.cardTitle}>Chef's choice</Text>
+                  <Text style={styles.cardText}>Seasonal highlights to try.</Text>
+                </View>
+              </ImageBackground>
             </View>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>For later</Text>
-            <View style={styles.banner}>
-              <Text style={styles.bannerTitle}>Save items to your cart</Text>
-              <Text style={styles.bannerText}>
-                Keep your favorites handy and check out when you're ready.
-              </Text>
-            </View>
+            <ImageBackground
+              source={require("../assets/images/bg-cart.jpg")}
+              style={styles.banner}
+              imageStyle={styles.bannerImage}
+              resizeMode="cover"
+            >
+              <View style={styles.bannerOverlay}>
+                <Text style={styles.bannerTitle}>Save items to your cart</Text>
+                <Text style={styles.bannerText}>
+                  Keep your favorites handy and check out when you're ready.
+                </Text>
+              </View>
+            </ImageBackground>
           </View>
         </ScrollView>
         <Pressable 
@@ -85,6 +113,13 @@ const styles = StyleSheet.create({
   hero: {
     backgroundColor: "#111827",
     borderRadius: 18,
+    overflow: "hidden",
+  },
+  heroImage: {
+    borderRadius: 18,
+  },
+  heroOverlay: {
+    backgroundColor: "rgba(17, 24, 39, 0.55)",
     padding: 20,
     gap: 10,
   },
@@ -120,12 +155,20 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    padding: 16,
     borderRadius: 16,
-    gap: 8,
+    minHeight: 140,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: "#E5E7EB",
+  },
+  cardImage: {
+    borderRadius: 16,
+  },
+  cardOverlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.35)",
+    padding: 24,
+    gap: 12,
+    flex: 1,
   },
   cardTitle: {
     fontSize: 16,
@@ -133,17 +176,25 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   cardText: {
-    color: "#4B5563",
+    color: "#3b414aff",
     fontSize: 14,
     lineHeight: 20,
   },
   banner: {
-    backgroundColor: "#FFFFFF",
-    padding: 18,
     borderRadius: 16,
+    minHeight: 120,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    gap: 6,
+  },
+  bannerImage: {
+    borderRadius: 16,
+  },
+  bannerOverlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.35)",
+    padding: 24,
+    gap: 10,
+    flex: 1,
   },
   bannerTitle: {
     fontSize: 16,
@@ -151,7 +202,7 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   bannerText: {
-    color: "#4B5563",
+    color: "#1c2025ff",
     fontSize: 14,
     lineHeight: 20,
   },
