@@ -31,7 +31,6 @@ export default function AdminRestaurant() {
         }
       })
       .catch((err) => {
-        console.log("Failed to load restaurant info", err);
         Alert.alert("Error", "Could not load restaurant info.");
       })
       .finally(() => setLoading(false));
@@ -43,7 +42,6 @@ export default function AdminRestaurant() {
       await saveRestaurantInfo({ name, address, city, state, zip, phone, hours });
       Alert.alert("Saved", "Restaurant info updated");
     } catch (err) {
-      console.log("Save failed", err);
       Alert.alert("Error", "Could not save restaurant info.");
     } finally {
       setSaving(false);

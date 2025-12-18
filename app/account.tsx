@@ -132,9 +132,7 @@ export default function Account() {
           text: "Log out",
           onPress: async () => {
             try {
-              console.log("Starting logout process...");
               await logout();
-              console.log("Logout complete, navigating to login");
               // Use replace to clear navigation stack and prevent back navigation
               router.replace("/login");
             } catch (error) {

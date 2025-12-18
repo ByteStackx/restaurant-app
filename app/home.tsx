@@ -1,5 +1,4 @@
-import { router } from "expo-router";
-import { ImageBackground, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { BottomTabs } from "./components/BottomTabs";
 import { TopNav } from "./components/TopNav";
 
@@ -74,7 +73,7 @@ export default function Home() {
             </ImageBackground>
           </View>
         </ScrollView>
-        <Pressable 
+        {/* <Pressable 
   onPress={() => router.push("/admin" as any)}
   style={{ 
     padding: 16, 
@@ -84,9 +83,9 @@ export default function Home() {
   }}
 >
   <Text style={{ color: "white", textAlign: "center", fontWeight: "600" }}>
-    🔧 Admin Dashboard (Dev)
+    Admin Dashboard (Dev)
   </Text>
-</Pressable>
+</Pressable> */}
       </View>
       <BottomTabs activeKey="home" />
     </SafeAreaView>

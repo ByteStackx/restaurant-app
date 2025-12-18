@@ -36,8 +36,6 @@ export function BottomTabs({ activeKey = "home" }: BottomTabsProps) {
     const href = ROUTES[key];
     if (href) {
       router.push(href as Href);
-    } else {
-      console.log("Tab pressed", key);
     }
   };
 
@@ -53,7 +51,6 @@ export function BottomTabs({ activeKey = "home" }: BottomTabsProps) {
       })
       .catch((err) => {
         setShowMore(false);
-        console.log("Logout failed", err);
       });
   };
 

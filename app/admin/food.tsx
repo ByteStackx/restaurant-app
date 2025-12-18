@@ -36,7 +36,6 @@ export default function AdminFood() {
     listMenuItems()
       .then((data) => setItems(data))
       .catch((err) => {
-        console.log("Failed to load menu items", err);
         Alert.alert("Error", "Could not load menu items.");
       })
       .finally(() => setLoading(false));
@@ -159,7 +158,6 @@ export default function AdminFood() {
       }
       resetForm();
     } catch (err) {
-      console.log("Save failed", err);
       Alert.alert("Error", "Could not save item.");
     } finally {
       setSaving(false);
@@ -200,7 +198,6 @@ export default function AdminFood() {
               resetForm();
             }
           } catch (err) {
-            console.log("Delete failed", err);
             Alert.alert("Error", "Could not delete item.");
           }
         },

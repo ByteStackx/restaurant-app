@@ -124,8 +124,6 @@ app.post("/pay", async (req, res) => {
 
     const shouldAutoConfirm = Boolean(confirm) || process.env.STRIPE_TEST_AUTOCONFIRM === "true";
 
-    console.log(`Creating PaymentIntent: amount=${amount}, currency=${currency}, autoConfirm=${shouldAutoConfirm}`);
-
     let intent;
     if (shouldAutoConfirm) {
       intent = await stripe.paymentIntents.create({
@@ -144,8 +142,6 @@ app.post("/pay", async (req, res) => {
         automatic_payment_methods: { enabled: true, allow_redirects: "never" },
       });
     }
-
-    console.log(`PaymentIntent created: ${intent.id}, status=${intent.status}`);
 
     res.json({
       paymentIntentId: intent.id,
